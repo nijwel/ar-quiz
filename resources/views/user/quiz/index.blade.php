@@ -23,7 +23,7 @@
                                 <div class="card-header">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <h5>{{ $quiz->title }}</h5>
-                                        <p class="text-muted float-right"> {{ quizResult($quiz->id) }}
+                                        <p class="text-muted float-right"> {{ quizResult($quiz->id, Auth::id()) }}
                                             /{{ $quiz->questions->count() }}</p>
                                     </div>
                                 </div>
