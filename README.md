@@ -1,4 +1,4 @@
-1.Clone your project
+1.Clone your project "git clone git@github.com:nijwel/ar-quiz.git"
 
 Go to the folder application using cd command on your cmd or terminal
 
