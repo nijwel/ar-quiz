@@ -23,10 +23,10 @@
         <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
             <div class="container">
                 <a class="navbar-brand"
-                    href="{{ auth()->user()->type == 'admin' ? url('/admin/home') : url('user/home') }}">
+                    href="{{ auth()->check() && auth()->user()->type == 'admin' ? url('/admin/home') : url('user/home') }}">
                     {{ config('app.name', 'Laravel') }}
                 </a>
-                @if (Auth::user()->type == 'admin')
+                @if (auth()->check() && Auth::user()->type == 'admin')
                     <div class="collapse navbar-collapse" id="navbarNav">
                         <ul class="navbar-nav">
                             <li class="nav-item">
@@ -37,7 +37,7 @@
                             </li>
                         </ul>
                     </div>
-                @elseif(Auth::user()->type == 'user')
+                @elseif(auth()->check() && Auth::user()->type == 'user')
                     <div class="collapse navbar-collapse" id="navbarNav">
                         <ul class="navbar-nav">
                             <li class="nav-item">
