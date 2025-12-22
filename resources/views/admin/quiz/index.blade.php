@@ -11,7 +11,14 @@
                             {{ session('success') }}
                         </div>
                     @endsession
-                    <a href="{{ route('quiz.create') }}" class="btn btn-sm btn-success float-right">Create New Quiz</a>
+
+                    <div>
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                            data-bs-target="#staticBackdrop">
+                            Upload Quiz
+                        </button>
+                        <a href="{{ route('quiz.create') }}" class="btn btn-sm btn-success float-right">Create New Quiz</a>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -45,6 +52,34 @@
                 </table>
 
                 {{ $quizzes->links() }}
+            </div>
+
+            <!-- Modal -->
+            <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+                aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="staticBackdropLabel">Upload Quiz</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{{ route('quiz.upload') }}" method="POST" enctype="multipart/form-data">
+                                @csrf
+                                <div class="mb-3">
+                                    <label for="quizFile" class="form-label">Choose Quiz File</label>
+                                    <input class="form-control" type="file" id="quizFile" accept="json"
+                                        name="quiz_file" required>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-sm btn-secondary"
+                                        data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-sm btn-primary">Upload</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-footer">
                 <div class="d-flex justify-content-between align-items-center">

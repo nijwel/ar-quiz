@@ -142,4 +142,39 @@ class QuizController extends Controller {
             return redirect()->back()->withErrors( ['error' => 'Failed to delete quiz: ' . $e->getMessage()] );
         }
     }
+
+    /**
+     * Handle quiz file upload and import.
+     */public function upload( Request $request ) {
+        $request->validate( [
+            'quiz_file' => 'required|file|mimes:json',
+        ] );
+
+        $file = $request->file( 'quiz_file' );
+
+        $quizData = json_decode( file_get_contents( $file->path() ), true );
+
+        // dd( $quizData );
+
+        $quiz = Quiz::create( [
+            'title'       => $quizData['quiz']['title'],
+            'slug'        => Str::slug( $quizData['quiz']['title'] ),
+            'description' => $quizData['quiz']['description'],
+        ] );
+
+        foreach ( $quizData['quiz']['questions'] as $questionData ) {
+            $question = $quiz->questions()->create( [
+                'question' => $questionData['question'],
+            ] );
+
+            foreach ( $questionData['answers'] as $answerData ) {
+                $question->answers()->create( [
+                    'answer'     => $answerData['answer'],
+                    'is_correct' => $answerData['is_correct'],
+                ] );
+            }
+        }
+
+        return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz imported successfully.' );
+    }
 }

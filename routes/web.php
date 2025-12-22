@@ -41,6 +41,7 @@ Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( fu
         Route::get( '/edit/{id}', [QuizController::class, 'edit'] )->name( 'quiz.edit' );
         Route::put( '/update/{id}', [QuizController::class, 'update'] )->name( 'quiz.update' );
         Route::delete( '/destroy/{id}', [QuizController::class, 'destroy'] )->name( 'quiz.destroy' );
+        Route::post( '/upload', [QuizController::class, 'upload'] )->name( 'quiz.upload' );
     } );
 
     Route::prefix( 'participants' )->group( function () {
