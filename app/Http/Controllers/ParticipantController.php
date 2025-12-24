@@ -5,13 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Quiz;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ParticipantController extends Controller {
     /**
      * Display a listing of the resource.
      */
     public function index() {
-        $participants = User::whereType( 'user' )->paginate( 15 );
+        $participants = User::whereType( 'user' )
+            ->withCount( 'quizResults' ) // total quizzes completed
+            ->withCount( ['userAnswers as quizzes_attempted_count' => function ( $query ) {
+                $query->select( DB::raw( 'count(distinct quiz_id)' ) );
+            }] )
+            ->paginate( 15 );
         return view( 'admin.participants.index', compact( 'participants' ) );
     }
 

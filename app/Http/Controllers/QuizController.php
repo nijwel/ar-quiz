@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Quiz;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class QuizController extends Controller {
@@ -11,7 +12,10 @@ class QuizController extends Controller {
      * Display a listing of the resource.
      */
     public function index() {
-        $quizzes = Quiz::latest()->paginate( 10 );
+        $quizzes = Quiz::latest()
+            ->with( 'questions' )
+            ->withCount( 'questions' )
+            ->paginate( 10 );
         return view( 'admin.quiz.index', compact( 'quizzes' ) );
     }
 
@@ -56,7 +60,7 @@ class QuizController extends Controller {
                 }
             }
 
-            return redirect()->route( 'quizzes.index' )->with( 'success', 'Quiz created successfully.' );
+            return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz created successfully.' );
         } catch ( \Exception $e ) {
             return redirect()->back()->withErrors( ['error' => 'Failed to create quiz: ' . $e->getMessage()] );
         }
@@ -82,7 +86,7 @@ class QuizController extends Controller {
      */
     public function update( Request $request, $id ) {
         $request->validate( [
-            'title'               => 'required|string|unique:tables,title,except,' . $id,
+            'title'               => 'required|string|unique:quizzes,title,' . $id,
             'description'         => 'nullable|string',
             'questions'           => 'required|array',
             'questions.*.text'    => 'required|string',
@@ -154,7 +158,16 @@ class QuizController extends Controller {
 
         $quizData = json_decode( file_get_contents( $file->path() ), true );
 
-        // dd( $quizData );
+        Log::info( 'Quiz Data: ', $quizData );
+
+        if ( !isset( $quizData['quiz'] ) || !isset( $quizData['quiz']['title'] ) ) {
+            return redirect()->back()->withErrors( ['error' => 'Invalid quiz file format.'] );
+        }
+
+        $existingQuiz = Quiz::where( 'title', $quizData['quiz']['title'] )->first();
+        if ( $existingQuiz ) {
+            return redirect()->back()->withErrors( ['error' => 'A quiz with the same title already exists.'] );
+        }
 
         $quiz = Quiz::create( [
             'title'       => $quizData['quiz']['title'],

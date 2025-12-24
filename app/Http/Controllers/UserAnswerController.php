@@ -11,10 +11,51 @@ class UserAnswerController extends Controller {
     /**
      * Display a listing of the resource.
      */
+    // public function index() {
+    //     $totalMarks = UserAnswer::where( 'user_id', auth()->id() )->get()->where( 'status', 'correct' )->count();
+    //     $quizzes    = Quiz::with( 'questions.answers' )->get();
+    //     return view( 'user.quiz.index', compact( 'quizzes', 'totalMarks' ) );
+    // }
+
     public function index() {
-        $totalMarks = UserAnswer::where( 'user_id', auth()->id() )->get()->where( 'status', 'correct' )->count();
-        $quizzes    = Quiz::with( 'questions.answers' )->get();
-        return view( 'user.quiz.index', compact( 'quizzes', 'totalMarks' ) );
+        $userId = auth()->id();
+
+        // Total marks (DB level filtering)
+        $totalMarks = UserAnswer::where( 'user_id', $userId )
+            ->where( 'status', 'correct' )
+            ->count();
+
+        // Quizzes with questions
+        $quizzes = Quiz::with( 'questions' )->get();
+
+        // All answers of this user (ONE query)
+        $userAnswers = UserAnswer::where( 'user_id', $userId )->get();
+
+        // Quiz wise result prepare
+        $quizResults = [];
+
+        foreach ( $quizzes as $quiz ) {
+            $answers = $userAnswers->where( 'quiz_id', $quiz->id );
+
+            $right = $answers->where( 'status', 'correct' )->count();
+            $wrong = $answers->where( 'status', 'incorrect' )->count();
+            $total = $answers->count();
+
+            $quizResults[$quiz->id] = [
+                'marks'           => $right,
+                'total_questions' => $quiz->questions->count(),
+                'total_answers'   => $total,
+                'right'           => $right,
+                'wrong'           => $wrong,
+                'attempted'       => $total > 0,
+            ];
+        }
+
+        return view( 'user.quiz.index', compact(
+            'quizzes',
+            'totalMarks',
+            'quizResults'
+        ) );
     }
 
     /**
@@ -61,15 +102,66 @@ class UserAnswerController extends Controller {
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit( string $id ) {
-        //
+    public function result( string $quizSlug ) {
+        $quiz = Quiz::with( 'questions.answers' )
+            ->whereSlug( $quizSlug )
+            ->firstOrFail();
+
+        $userAnswers = UserAnswer::where( 'user_id', auth()->id() )
+            ->where( 'quiz_id', $quiz->id )
+            ->get()
+            ->keyBy( 'question_id' );
+
+        // Transform questions for user's answers
+        $quiz->questions->transform( function ( $question ) use ( $userAnswers ) {
+            $userAnswer = $userAnswers->get( $question->id );
+
+            $question->is_correct     = false; // default
+            $question->user_answer_id = $userAnswer->answer_id ?? null;
+
+            if ( $userAnswer ) {
+                $question->is_correct = $question->answers
+                    ->where( 'id', $userAnswer->answer_id )
+                    ->where( 'is_correct', true )
+                    ->isNotEmpty();
+            }
+
+            return $question;
+        } );
+
+        // Calculate summary
+        $totalQuestions = $quiz->questions->count();
+        $totalMarks     = $quiz->questions->where( 'is_correct', true )->count();
+        $totalAnswers   = $userAnswers->count();
+        $rightAnswers   = $quiz->questions->where( 'is_correct', true )->count();
+        $wrongAnswers   = $quiz->questions->where( 'is_correct', false )->whereNotNull( 'user_answer_id' )->count();
+
+        return view( 'user.quiz.result', compact(
+            'quiz',
+            'totalMarks',
+            'totalQuestions',
+            'totalAnswers',
+            'rightAnswers',
+            'wrongAnswers'
+        ) );
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update( Request $request, string $id ) {
-        //
+    public function leaderboard() {
+        $leaderboard = UserAnswer::with( 'user' )
+            ->selectRaw( 'user_id,
+             COUNT(CASE WHEN status = "correct" THEN 1 END) as total_correct,
+             COUNT(question_id) as total_attempted,
+             COUNT(DISTINCT quiz_id) as total_quizzes,
+             (COUNT(CASE WHEN status = "correct" THEN 1 END) * 100.0 / NULLIF(COUNT(question_id), 0)) as average_score' )
+            ->groupBy( 'user_id' )
+            ->orderByDesc( 'average_score' ) // গড় নম্বরের ভিত্তিতে র‍্যাঙ্কিং
+            ->orderByDesc( 'total_quizzes' ) // গড় সমান হলে যে বেশি পরীক্ষা দিয়েছে সে আগে থাকবে
+            ->get();
+
+        return view( 'user.quiz.leaderboard', compact( 'leaderboard' ) );
     }
 
     /**
