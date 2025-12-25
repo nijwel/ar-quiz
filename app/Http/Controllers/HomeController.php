@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Quiz;
 use App\Models\User;
 use App\Models\UserAnswer;
 
@@ -50,6 +51,10 @@ class HomeController extends Controller {
      * @return \Illuminate\Contracts\Support\Renderable
      */
     public function adminHome() {
-        return view( 'admin.home' );
+
+        $quizCount = Quiz::count();
+
+        $userCount = User::whereType( 'user' )->count();
+        return view( 'admin.home', compact( 'quizCount', 'userCount' ) );
     }
 }

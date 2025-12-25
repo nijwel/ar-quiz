@@ -108,7 +108,7 @@
                         <i class="bi bi-journal-text"></i>
                     </div>
                     <h6 class="text-muted fw-bold">Total Quizzes</h6>
-                    <h2 class="fw-extrabold mb-0">12</h2> {{-- এখানে আপনার ডাইনামিক কাউন্ট বসান --}}
+                    <h2 class="fw-extrabold mb-0">{{ $quizCount }}</h2>
                 </div>
             </div>
 
@@ -118,7 +118,7 @@
                         <i class="bi bi-people"></i>
                     </div>
                     <h6 class="text-muted fw-bold">Total Participants</h6>
-                    <h2 class="fw-extrabold mb-0">150+</h2> {{-- এখানে আপনার ডাইনামিক কাউন্ট বসান --}}
+                    <h2 class="fw-extrabold mb-0">{{ $userCount }}</h2>
                 </div>
             </div>
 
@@ -128,7 +128,7 @@
                         <i class="bi bi-graph-up-arrow"></i>
                     </div>
                     <h6 class="text-muted fw-bold">Active Exams</h6>
-                    <h2 class="fw-extrabold mb-0">05</h2> {{-- এখানে আপনার ডাইনামিক কাউন্ট বসান --}}
+                    <h2 class="fw-extrabold mb-0">05</h2>
                 </div>
             </div>
         </div>

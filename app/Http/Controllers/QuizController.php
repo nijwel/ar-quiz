@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Quiz;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class QuizController extends Controller {
@@ -141,7 +140,7 @@ class QuizController extends Controller {
             // } );
             $quiz->delete();
 
-            return redirect()->route( 'quizzes.index' )->with( 'success', 'Quiz deleted successfully.' );
+            return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz deleted successfully.' );
         } catch ( \Exception $e ) {
             return redirect()->back()->withErrors( ['error' => 'Failed to delete quiz: ' . $e->getMessage()] );
         }
@@ -149,30 +148,87 @@ class QuizController extends Controller {
 
     /**
      * Handle quiz file upload and import.
-     */public function upload( Request $request ) {
+     */
+    // public function upload( Request $request ) {
+    //     $request->validate( [
+    //         'quiz_file' => 'required|file|mimes:json',
+    //     ] );
+
+    //     $file = $request->file( 'quiz_file' );
+
+    //     $quizData = json_decode( file_get_contents( $file->path() ), true );
+
+    //     Log::info( 'Quiz Data: ', $quizData );
+
+    //     if ( !isset( $quizData['quiz'] ) || !isset( $quizData['quiz']['title'] ) ) {
+    //         return redirect()->back()->withErrors( ['error' => 'Invalid quiz file format.'] );
+    //     }
+
+    //     $existingQuiz = Quiz::where( 'title', $quizData['quiz']['title'] )->first();
+    //     if ( $existingQuiz ) {
+    //         return redirect()->back()->withErrors( ['error' => 'A quiz with the same title already exists.'] );
+    //     }
+
+    //     $quiz = Quiz::create( [
+    //         'title'       => $quizData['quiz']['title'],
+    //         'slug'        => Str::slug( $quizData['quiz']['title'] ),
+    //         'description' => $quizData['quiz']['description'],
+    //     ] );
+
+    //     foreach ( $quizData['quiz']['questions'] as $questionData ) {
+    //         $question = $quiz->questions()->create( [
+    //             'question' => $questionData['question'],
+    //         ] );
+
+    //         foreach ( $questionData['answers'] as $answerData ) {
+    //             $question->answers()->create( [
+    //                 'answer'     => $answerData['answer'],
+    //                 'is_correct' => $answerData['is_correct'],
+    //             ] );
+    //         }
+    //     }
+
+    //     return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz imported successfully.' );
+    // }
+
+    public function upload( Request $request ) {
         $request->validate( [
-            'quiz_file' => 'required|file|mimes:json',
+            'quiz_file' => 'nullable|file|mimes:json',
+            'quiz_json' => 'nullable|string',
         ] );
 
-        $file = $request->file( 'quiz_file' );
-
-        $quizData = json_decode( file_get_contents( $file->path() ), true );
-
-        Log::info( 'Quiz Data: ', $quizData );
-
-        if ( !isset( $quizData['quiz'] ) || !isset( $quizData['quiz']['title'] ) ) {
-            return redirect()->back()->withErrors( ['error' => 'Invalid quiz file format.'] );
+        if ( $request->hasFile( 'quiz_file' ) ) {
+            $quizData = json_decode(
+                file_get_contents( $request->file( 'quiz_file' )->path() ),
+                true
+            );
+        } elseif ( $request->filled( 'quiz_json' ) ) {
+            $quizData = json_decode( $request->quiz_json, true );
+        } else {
+            return back()->withErrors( [
+                'error' => 'Please upload a JSON file or paste quiz JSON data.',
+            ] );
         }
 
+        if ( !$quizData || !isset( $quizData['quiz']['title'] ) ) {
+            return back()->withErrors( [
+                'error' => 'Invalid quiz JSON format.',
+            ] );
+        }
+
+        // Duplicate quiz check
         $existingQuiz = Quiz::where( 'title', $quizData['quiz']['title'] )->first();
         if ( $existingQuiz ) {
-            return redirect()->back()->withErrors( ['error' => 'A quiz with the same title already exists.'] );
+            return back()->withErrors( [
+                'error' => 'A quiz with the same title already exists.',
+            ] );
         }
 
+        // Create quiz
         $quiz = Quiz::create( [
             'title'       => $quizData['quiz']['title'],
             'slug'        => Str::slug( $quizData['quiz']['title'] ),
-            'description' => $quizData['quiz']['description'],
+            'description' => $quizData['quiz']['description'] ?? null,
         ] );
 
         foreach ( $quizData['quiz']['questions'] as $questionData ) {
@@ -188,6 +244,8 @@ class QuizController extends Controller {
             }
         }
 
-        return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz imported successfully.' );
+        return redirect()->route( 'quiz.index' )
+            ->with( 'success', 'Quiz imported successfully.' );
     }
+
 }

@@ -181,8 +181,23 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Select JSON File</label>
-                                <input class="form-control" type="file" name="quiz_file" accept=".json" required
+                                <input class="form-control" type="file" name="quiz_file" accept="application/JSON"
                                     style="border-radius: 10px;">
+                            </div>
+                            <div class="text-center text-muted fw-bold my-2">OR</div>
+
+                            <!-- JSON TEXTAREA -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Paste Quiz JSON</label>
+                                <textarea class="form-control" name="quiz_json" rows="10"
+                                    placeholder='{
+  "quiz": {
+    "title": "Laravel Advanced Quiz",
+    "description": "...",
+    "questions": []
+  }
+}'
+                                    style="border-radius: 10px;"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer border-0 p-4 pt-0">
