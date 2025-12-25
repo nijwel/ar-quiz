@@ -32,6 +32,8 @@ class QuizController extends Controller {
         $request->validate( [
             'title'               => 'required|string|unique:quizzes,title',
             'description'         => 'nullable|string',
+            'start_exam_at'       => 'nullable|date',
+            'end_exam_at'         => 'nullable|date|after:start_exam_at',
             'questions'           => 'required|array',
             'questions.*.text'    => 'required|string',
             'questions.*.answers' => 'required|array|min:2',
@@ -40,9 +42,11 @@ class QuizController extends Controller {
 
         try {
             $quiz = Quiz::create( [
-                'title'       => $request->title,
-                'slug'        => Str::slug( $request->title ),
-                'description' => $request->description,
+                'title'         => $request->title,
+                'slug'          => Str::slug( $request->title ),
+                'description'   => $request->description,
+                'start_exam_at' => $request->start_exam_at,
+                'end_exam_at'   => $request->end_exam_at,
             ] );
 
             foreach ( $request->questions as $questionData ) {
@@ -87,6 +91,8 @@ class QuizController extends Controller {
         $request->validate( [
             'title'               => 'required|string|unique:quizzes,title,' . $id,
             'description'         => 'nullable|string',
+            'start_exam_at'       => 'nullable|date',
+            'end_exam_at'         => 'nullable|date|after:start_exam_at',
             'questions'           => 'required|array',
             'questions.*.text'    => 'required|string',
             'questions.*.answers' => 'required|array|min:2',
@@ -97,9 +103,11 @@ class QuizController extends Controller {
             $quiz = Quiz::findOrFail( $id );
 
             $quiz->update( [
-                'title'       => $request->title,
-                'slug'        => Str::slug( $request->title ),
-                'description' => $request->description,
+                'title'         => $request->title,
+                'slug'          => Str::slug( $request->title ),
+                'description'   => $request->description,
+                'start_exam_at' => $request->start_exam_at,
+                'end_exam_at'   => $request->end_exam_at,
             ] );
 
             foreach ( $quiz->questions as $question ) {
@@ -226,9 +234,11 @@ class QuizController extends Controller {
 
         // Create quiz
         $quiz = Quiz::create( [
-            'title'       => $quizData['quiz']['title'],
-            'slug'        => Str::slug( $quizData['quiz']['title'] ),
-            'description' => $quizData['quiz']['description'] ?? null,
+            'title'         => $quizData['quiz']['title'],
+            'slug'          => Str::slug( $quizData['quiz']['title'] ),
+            'description'   => $quizData['quiz']['description'] ?? null,
+            'start_exam_at' => $quizData['quiz']['start_exam_at'] ?? null,
+            'end_exam_at'   => $quizData['quiz']['end_exam_at'] ?? null,
         ] );
 
         foreach ( $quizData['quiz']['questions'] as $questionData ) {

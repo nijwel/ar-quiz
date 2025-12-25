@@ -107,10 +107,22 @@
                                 class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
                                 style="border-radius: 10px;">
                         </div>
-                        <div class="col-md-12 mb-0">
+                        <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Description</label>
                             <textarea name="description" class="form-control" rows="2"
                                 placeholder="Briefly describe what this quiz is about..." style="border-radius: 10px;">{{ old('description') }}</textarea>
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <label class="form-label fw-bold">Start Date & Time</label>
+                            <input type="datetime-local" name="start_exam_at" value="{{ old('start_exam_at') }}"
+                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                style="border-radius: 10px;">
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <label class="form-label fw-bold">End Date & Time</label>
+                            <input type="datetime-local" name="end_exam_at" value="{{ old('end_exam_at') }}"
+                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                style="border-radius: 10px;">
                         </div>
                     </div>
                 </div>

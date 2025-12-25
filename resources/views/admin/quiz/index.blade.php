@@ -116,6 +116,8 @@
                                 <th class="ps-4">ID</th>
                                 <th>Quiz Details</th>
                                 <th>Description</th>
+                                <th>Start Date & Time</th>
+                                <th>End Date & Time</th>
                                 <th class="text-center">Actions</th>
                             </tr>
                         </thead>
@@ -130,6 +132,22 @@
                                     </td>
                                     <td class="text-muted small" style="max-width: 300px;">
                                         {{ Str::limit($quiz->description, 80) }}
+                                    </td>
+                                    <td>
+                                        @if ($quiz->start_exam_at)
+                                            <div>{{ \Carbon\Carbon::parse($quiz->start_exam_at)->toDayDateTimeString() }}
+                                            </div>
+                                        @else
+                                            <small class="text-muted">No scheduled time</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($quiz->end_exam_at)
+                                            <div>{{ \Carbon\Carbon::parse($quiz->end_exam_at)->toDayDateTimeString() }}
+                                            </div>
+                                        @else
+                                            <small class="text-muted">No scheduled time</small>
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-2">

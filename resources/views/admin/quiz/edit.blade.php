@@ -99,11 +99,28 @@
                             <label class="form-label fw-bold">Description</label>
                             <textarea name="description" class="form-control" rows="2" style="border-radius: 10px;">{{ old('description', $quiz->description) }}</textarea>
                         </div>
+                        <div class="col-md-6 mb-0">
+                            <label class="form-label fw-bold">Start Date & Time</label>
+                            <input type="datetime-local" name="start_exam_at"
+                                value="{{ old('start_exam_at', $quiz->start_exam_at) }}"
+                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                style="border-radius: 10px;">
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <label class="form-label fw-bold">End Date & Time</label>
+                            <input type="datetime-local" name="end_exam_at"
+                                value="{{ old('end_exam_at', $quiz->end_exam_at) }}" class="form-control form-control-lg"
+                                placeholder="e.g. Basic Laravel Quiz" required style="border-radius: 10px;">
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <h4 class="fw-bold mb-4 text-dark"><i class="bi bi-list-check me-2 text-primary"></i> Questions & Answers</h4>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-4 text-dark"><i class="bi bi-list-check me-2 text-primary"></i> Questions & Answers
+                </h4>
+                <button type="submit" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm">Update Quiz</button>
+            </div>
 
             <div id="questions-wrapper">
                 @foreach ($quiz->questions as $qIndex => $question)

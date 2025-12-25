@@ -100,7 +100,26 @@
         <div class="row">
             @forelse ($quizzes as $quiz)
                 @php
-                    $result = $quizResults[$quiz->id];
+                    // সঠিক উত্তর বের করার সবচেয়ে নিরাপদ উপায়
+                    $correct = $quiz->userAnswers
+                        ->filter(function ($ans) {
+                            return $ans->status == 'correct';
+                        })
+                        ->count();
+
+                    $wrong = $quiz->userAnswers->count() - $correct;
+                    $quizTotal = $quiz->questions_count;
+
+                    $result = [
+                        'attempted' => true,
+                        'right' => $correct,
+                        'wrong' => $wrong,
+                        'total_questions' => $quizTotal,
+                        'marks' => $correct,
+                    ];
+
+                    // প্রগ্রেস বার পারসেন্টেজ
+                    $percent = $quizTotal > 0 ? ($correct / $quizTotal) * 100 : 0;
                 @endphp
 
                 <div class="col-lg-4 col-md-6 mb-4">
@@ -113,15 +132,7 @@
                                 @if ($result['attempted'])
                                     <span class="badge bg-success-subtle text-success stat-badge">Completed</span>
                                 @else
-                                    @if (!empty($quiz->start_exam_at) && $quiz->start_exam_at > now())
-                                        <span class="badge bg-primary-subtle text-primary stat-badge">Upcoming</span>
-                                    @elseif(!empty($quiz->end_exam_at) && $quiz->end_exam_at < now())
-                                        <span class="badge bg-danger-subtle text-danger stat-badge">Expired</span>
-                                    @elseif($quiz->start_exam_at <= now() && $quiz->end_exam_at >= now())
-                                        <span class="badge bg-warning-subtle text-warning stat-badge">Live Now</span>
-                                    @else
-                                        <span class="badge bg-primary-subtle text-primary stat-badge">New</span>
-                                    @endif
+                                    <span class="badge bg-primary-subtle text-primary stat-badge">New</span>
                                 @endif
                             </div>
 
@@ -152,31 +163,6 @@
                                             <span class="fw-bold text-danger">{{ $result['wrong'] }}</span>
                                         </div>
                                     </div>
-                                @else
-                                    @if ($quiz->start_exam_at || $quiz->end_exam_at)
-                                        <div class="d-flex justify-content-between mt-1">
-                                            <div class="d-flex align-items-center mt-2">
-                                                <small class="text-muted">
-                                                    <i class="bi bi-calendar-event me-1"></i> Start:
-                                                    <span class="text-dark fw-medium">
-                                                        {{ Carbon\Carbon::parse($quiz->start_exam_at)->format('d M, Y') }}
-                                                    </span>
-                                                </small>
-                                            </div>
-                                            <div class="d-flex align-items-center mt-2">
-                                                <small class="text-muted">
-                                                    <i class="bi bi-clock me-1"></i> Time:
-                                                    <span class="text-dark fw-medium">
-                                                        {{ Carbon\Carbon::parse($quiz->start_exam_at)->format('h:i A') }}
-                                                    </span>
-                                                </small>
-                                            </div>
-                                        </div>
-                                    @else
-                                        <div class="mt-2 text-center">
-                                            <small class="text-muted">No scheduled time for this quiz.</small>
-                                        </div>
-                                    @endif
                                 @endif
                             </div>
 

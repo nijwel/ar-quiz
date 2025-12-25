@@ -13,12 +13,38 @@ class ParticipantController extends Controller {
      */
     public function index() {
         $participants = User::whereType( 'user' )
-            ->withCount( 'quizResults' ) // total quizzes completed
+            ->withCount( 'quizResults' )
             ->withCount( ['userAnswers as quizzes_attempted_count' => function ( $query ) {
                 $query->select( DB::raw( 'count(distinct quiz_id)' ) );
             }] )
             ->paginate( 15 );
         return view( 'admin.participants.index', compact( 'participants' ) );
+    }
+
+    public function myExams() {
+        $userId = auth()->id();
+
+        $quizIds = DB::table( 'user_answers' )
+            ->where( 'user_id', $userId )
+            ->distinct()
+            ->pluck( 'quiz_id' );
+
+        $quizzes = Quiz::whereIn( 'id', $quizIds )
+            ->withCount( 'questions' )
+            ->with( ['userAnswers' => function ( $query ) use ( $userId ) {
+                $query->where( 'user_id', $userId );
+            }] )
+            ->get();
+
+        // ইউজারের অর্জিত মোট নম্বর (টোটাল পয়েন্ট) ক্যালকুলেশন
+        $totalMarks = 0;
+        foreach ( $quizzes as $quiz ) {
+            $totalMarks += $quiz->userAnswers->filter( function ( $ans ) {
+                return $ans->status == 'correct';
+            } )->count();
+        }
+
+        return view( 'user.quiz.my_exams', compact( 'quizzes', 'totalMarks' ) );
     }
 
     /**

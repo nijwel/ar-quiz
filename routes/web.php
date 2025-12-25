@@ -27,8 +27,9 @@ Route::prefix( 'user' )->middleware( ['auth', 'user-access:user'] )->group( func
         Route::get( '/{quiz}', [UserAnswerController::class, 'show'] )->name( 'user.quiz.show' );
         Route::post( '/submit', [UserAnswerController::class, 'store'] )->name( 'user.quiz.submit' );
         Route::get( '/result/{quiz}', [UserAnswerController::class, 'result'] )->name( 'user.quiz.result' );
-        Route::get( '/leader/board', [UserAnswerController::class, 'leaderboard'] )->name( 'user.quiz.leaderboard' );
     } );
+    Route::get( '/my-quiz', [ParticipantController::class, 'myExams'] )->name( 'user.my.quiz' );
+    Route::get( '/leader/board', [UserAnswerController::class, 'leaderboard'] )->name( 'user.quiz.leaderboard' );
 } );
 
 /*------------------------------------------

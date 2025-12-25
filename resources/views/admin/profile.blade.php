@@ -44,7 +44,7 @@
 
         .nav-pills .nav-link.active {
             background: var(--admin-gradient);
-            color: white;
+            color: white !important;
             box-shadow: 0 5px 15px rgba(78, 84, 200, 0.3);
         }
 

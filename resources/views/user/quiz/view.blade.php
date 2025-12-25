@@ -106,83 +106,156 @@
             font-weight: 800;
         }
 
-        .sticky-timer {
-            position: sticky;
-            top: 20px;
-            z-index: 1000;
+        #quiz-content {
+            position: relative;
         }
 
-        /* কুইজ সেকশন শুরুতে লুকানো থাকবে */
+        .sticky-timer {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 85px;
+            z-index: 1020;
+            margin-top: 10px;
+            margin-bottom: 30px;
+            background: var(--quiz-gradient);
+            border-radius: 15px;
+            padding: 15px 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .sticky-timer.scrolled {
+            padding: 10px 20px;
+            border-radius: 0 0 15px 15px;
+        }
+
+        .timer-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 18px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .sticky-timer {
+                top: 55px;
+                /* মোবাইলে নেভবার ছোট হলে এটিও কমবে */
+                padding: 10px 15px;
+                margin-left: -5px;
+                margin-right: -5px;
+                border-radius: 12px;
+            }
+
+            .sticky-timer h2 {
+                font-size: 1.1rem !important;
+                /* টাইটেল ছোট করা */
+                margin-bottom: 0 !important;
+            }
+
+            .sticky-timer p {
+                display: none;
+                /* মোবাইল স্ক্রিনে ডেসক্রিপশন লুকানো (জায়গা বাঁচাতে) */
+            }
+
+            .timer-box {
+                min-width: 70px !important;
+                padding: 5px 10px !important;
+            }
+
+            #timer {
+                font-size: 1.1rem !important;
+                /* টাইমার ফন্ট ছোট করা */
+            }
+
+            .btn-cancel-text {
+                display: none;
+                /* শুধু আইকন দেখানোর জন্য বাটন ছোট করা */
+            }
+        }
+
         #quiz-content {
             display: none;
         }
     </style>
 
-    <div class="container py-4">
+    <div class="container py-2">
 
         <div id="start-screen">
             <div class="start-card">
                 <i class="bi bi-clock-history text-primary" style="font-size: 3rem;"></i>
                 <h2 class="fw-bold mt-3">{{ $quiz->title }}</h2>
-                <p class="text-muted">আপনি কি কুইজটি শুরু করতে প্রস্তুত? আপনার কাছে মাত্র ১০ মিনিট সময় থাকবে।</p>
+                <p class="text-muted">আপনি কি কুইজটি শুরু করতে প্রস্তুত? আপনার কাছে মাত্র {{ $quiz->questions->count() }}
+                    মিনিট সময় থাকবে।</p>
                 <button id="startBtn" class="btn btn-start btn-lg w-100">কুইজ শুরু করুন</button>
             </div>
         </div>
-
-        <div id="quiz-content">
-            <div class="quiz-header d-flex justify-content-between align-items-center flex-wrap gap-3 sticky-timer">
-                <div>
-                    <h2 class="fw-bold mb-1">{{ $quiz->title }}</h2>
-                    <p class="mb-0 opacity-75">সময় শেষ হওয়ার আগে উত্তর জমা দিন।</p>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <div class="timer-box">
-                        <small class="d-block text-uppercase fw-bold" style="font-size: 10px;">Time Remaining</small>
-                        <span id="timer">00:00</span>
+        <div class="container py-0">
+            <div id="quiz-content">
+                <div class="quiz-header d-flex justify-content-between align-items-center flex-wrap gap-3 sticky-timer">
+                    <div class="text-white">
+                        <h4 class="fw-bold mb-0">{{ $quiz->title }}</h4>
+                        <p class="mb-0 opacity-75 small d-none d-md-block">সময় শেষ হওয়ার আগে উত্তর জমা দিন।</p>
                     </div>
-                    <a href="{{ route('home') }}" class="btn btn-light fw-bold"
-                        onclick="return confirm('আপনি কি নিশ্চিত? প্রগতি হারিয়ে যাবে।')">Cancel</a>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="timer-box bg-white text-dark shadow-sm border-0 d-flex flex-column align-items-center">
+                            <small class="text-uppercase fw-bold text-muted" style="font-size: 8px;">Progress</small>
+                            <div class="fw-bold">
+                                <span id="answered-count" class="text-primary">0</span>
+                                <span class="text-muted small"> / {{ $quiz->questions->count() }}</span>
+                            </div>
+                        </div>
+
+                        <div class="timer-box text-white d-flex flex-column align-items-center">
+                            <small class="text-uppercase fw-bold" style="font-size: 8px; opacity: 0.8;">Time Left</small>
+                            <span id="timer" class="fw-bold">00:00</span>
+                        </div>
+
+                        <a href="{{ route('home') }}" class="btn btn-sm btn-light fw-bold rounded px-3"
+                            onclick="return confirm('আপনি কি নিশ্চিত?')">Cancel</a>
+                    </div>
                 </div>
-            </div>
 
-            <form action="{{ route('user.quiz.submit') }}" method="POST" id="quizForm">
-                @csrf
-                <input type="hidden" name="quiz_id" value="{{ $quiz->id }}">
+                <form action="{{ route('user.quiz.submit') }}" method="POST" id="quizForm">
+                    @csrf
+                    <input type="hidden" name="quiz_id" value="{{ $quiz->id }}">
 
-                <div class="row">
-                    @foreach ($quiz->questions as $key => $question)
-                        <div class="col-lg-6">
-                            <div class="card question-card">
-                                <div class="card-header bg-white border-0 pt-4 px-4">
-                                    <h5 class="question-title">
-                                        <span class="text-primary me-2">Q{{ $key + 1 }}.</span>
-                                        {{ $question->question }}
-                                    </h5>
-                                    <input type="hidden" name="question_id[]" value="{{ $question->id }}">
-                                </div>
-                                <div class="card-body px-4 pb-4">
-                                    <div class="options-list">
-                                        @foreach ($question->answers as $answer)
-                                            <label class="option-container">
-                                                <input type="radio" name="answers[{{ $question->id }}]"
-                                                    value="{{ $answer->id }}">
-                                                <span>{{ $answer->answer }}</span>
-                                                <span class="checkmark"></span>
-                                            </label>
-                                        @endforeach
+                    <div class="row">
+                        @foreach ($quiz->questions as $key => $question)
+                            <div class="col-lg-6">
+                                <div class="card question-card">
+                                    <div class="card-header bg-white border-0 pt-4 px-4">
+                                        <h5 class="question-title">
+                                            <span class="text-primary me-2">Q{{ $key + 1 }}.</span>
+                                            {{ $question->question }}
+                                        </h5>
+                                        <input type="hidden" name="question_id[]" value="{{ $question->id }}">
+                                    </div>
+                                    <div class="card-body px-4 pb-4">
+                                        <div class="options-list">
+                                            @foreach ($question->answers as $answer)
+                                                <label class="option-container">
+                                                    <input type="radio" name="answers[{{ $question->id }}]"
+                                                        value="{{ $answer->id }}">
+                                                    <span>{{ $answer->answer }}</span>
+                                                    <span class="checkmark"></span>
+                                                </label>
+                                            @endforeach
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
+                        @endforeach
+                    </div>
 
-                <div class="text-center mt-4 mb-5">
-                    <button class="btn btn-submit btn-lg" type="submit">
-                        <i class="bi bi-send-fill me-2"></i> Submit My Answers
-                    </button>
-                </div>
-            </form>
+                    <div class="text-center mt-4 mb-5">
+                        <button class="btn btn-submit btn-lg" type="submit">
+                            <i class="bi bi-send-fill me-2"></i> Submit My Answers
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -264,5 +337,34 @@
                 }
             };
         });
+
+        // লাইভ আনসার কাউন্ট লজিক
+        const totalQuestions = {{ $quiz->questions->count() }};
+        const answeredDisplay = document.getElementById('answered-count');
+        const radioButtons = quizForm.querySelectorAll('input[type="radio"]');
+
+        function updateAnsweredCount() {
+            // কয়টি আলাদা আলাদা নামের (question_id) রেডিও বাটন সিলেক্ট করা হয়েছে তা চেক করবে
+            const answeredQuestions = new Set();
+            radioButtons.forEach(radio => {
+                if (radio.checked) {
+                    answeredQuestions.add(radio.name);
+                }
+            });
+            answeredDisplay.textContent = answeredQuestions.size;
+
+            // সব উত্তর দেওয়া হয়ে গেলে কালার পরিবর্তন (ঐচ্ছিক)
+            if (answeredQuestions.size === totalQuestions) {
+                answeredDisplay.classList.replace('text-primary', 'text-success');
+            }
+        }
+
+        // প্রতিটি রেডিও বাটনে ইভেন্ট লিসেনার যোগ করা
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', updateAnsweredCount);
+        });
+
+        // পেজ রিফ্রেশ হলে বা আগে থেকে উত্তর সেভ থাকলে তা দেখানোর জন্য একবার কল করা
+        updateAnsweredCount();
     </script>
 @endsection

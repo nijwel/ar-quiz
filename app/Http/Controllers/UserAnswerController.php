@@ -27,7 +27,7 @@ class UserAnswerController extends Controller {
             ->count();
 
         // Quizzes with questions
-        $quizzes = Quiz::with( 'questions' )->get();
+        $quizzes = Quiz::with( 'questions' )->latest()->get();
 
         // All answers of this user (ONE query)
         $userAnswers = UserAnswer::where( 'user_id', $userId )->get();
@@ -108,6 +108,15 @@ class UserAnswerController extends Controller {
                     }] );
             }] )
             ->firstOrFail();
+
+        if ( $quiz->end_exam_at && now()->gt( $quiz->end_exam_at ) ) {
+            return redirect()
+                ->route( 'user.quiz.index' )
+                ->with(
+                    'error',
+                    'The quiz is not available at the moment. It is scheduled to end on ' . Carbon::parse( $quiz->end_exam_at )->toDayDateTimeString() . '.'
+                );
+        }
 
         if ( $quiz->start_exam_at && now()->lt( $quiz->start_exam_at ) ) {
             return redirect()
