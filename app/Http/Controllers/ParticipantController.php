@@ -39,10 +39,20 @@ class ParticipantController extends Controller {
      * Display the specified resource.
      */
     public function show( string $id ) {
-        $participant     = User::findOrFail( $id );
-        $participantQuiz = $participant->userAnswers()->distinct()->pluck( 'quiz_id' )->toArray();
+        $participant = User::findOrFail( $id );
 
-        $quizzes = Quiz::whereIn( 'id', $participantQuiz )->get();
+        $quizIds = DB::table( 'user_answers' )
+            ->where( 'user_id', $id )
+            ->distinct()
+            ->pluck( 'quiz_id' );
+
+        $quizzes = Quiz::whereIn( 'id', $quizIds )
+            ->withCount( 'questions' )
+            ->with( ['userAnswers' => function ( $query ) use ( $id ) {
+                $query->where( 'user_id', $id );
+            }] )
+            ->get();
+
         return view( 'admin.participants.view', compact( 'participant', 'quizzes' ) );
     }
 

@@ -14,6 +14,9 @@ return new class extends Migration {
             $table->string( 'title' );
             $table->string( 'slug' );
             $table->text( 'description' )->nullable();
+            $table->boolean( 'status' )->default( false );
+            $table->datetime( 'start_exam_at' )->nullable();
+            $table->datetime( 'end_exam_at' )->nullable();
             $table->timestamps();
         } );
     }

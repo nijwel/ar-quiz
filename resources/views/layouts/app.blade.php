@@ -216,9 +216,11 @@
                                         <small class="text-muted d-block">Signed in as</small>
                                         <span
                                             class="fw-bold">{{ Auth::user()->type == 'admin' ? 'Administrator' : 'Student' }}</span>
+                                        <small>#{{ auth()->user()->student_id }}</small>
                                     </div>
 
-                                    <a class="dropdown-item" href="#">
+                                    <a class="dropdown-item"
+                                        href="{{ Auth::user()->type == 'admin' ? route('admin.profile') : route('user.profile') }}">
                                         <i class="bi bi-person me-2"></i> Profile
                                     </a>
 

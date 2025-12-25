@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Quiz;
 use App\Models\User;
 use App\Models\UserAnswer;
+use Illuminate\Http\Request;
 
 class HomeController extends Controller {
     /**
@@ -56,5 +57,43 @@ class HomeController extends Controller {
 
         $userCount = User::whereType( 'user' )->count();
         return view( 'admin.home', compact( 'quizCount', 'userCount' ) );
+    }
+
+    /**
+     * Show the application dashboard.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function adminProfile() {
+        return view( 'admin.profile' );
+    }
+
+    /**
+     * Show the application dashboard.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function userProfile() {
+        return view( 'user.profile' );
+    }
+
+    public function updateProfile( Request $request ) {
+        $request->validate( [
+            'name'  => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . auth()->id(),
+        ] );
+
+        auth()->user()->update( $request->only( 'name' ) );
+        return back()->with( 'success', 'Profile updated successfully!' );
+    }
+
+    public function updatePassword( Request $request ) {
+        $request->validate( [
+            'current_password' => 'required|current_password',
+            'password'         => 'required|min:8|confirmed',
+        ] );
+
+        auth()->user()->update( ['password' => Hash::make( $request->password )] );
+        return back()->with( 'success', 'Password changed successfully!' );
     }
 }

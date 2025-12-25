@@ -10,6 +10,8 @@ class Quiz extends Model {
         'title',
         'slug',
         'description',
+        'start_exam_at',
+        'end_exam_at',
     ];
     /**
      * The attributes that should be cast to native types.
@@ -26,7 +28,13 @@ class Quiz extends Model {
      * Get the questions for the quiz.
      */
     public function questions() {
-        return $this->hasMany( Question::class );
+        return $this->hasMany( Question::class, 'quiz_id' );
+    }
+
+    // app/Models/Quiz.php
+
+    public function userAnswers() {
+        return $this->hasMany( UserAnswer::class, 'quiz_id' );
     }
 
 }

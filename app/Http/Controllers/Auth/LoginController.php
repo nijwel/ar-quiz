@@ -26,7 +26,7 @@ class LoginController extends Controller {
      *
      * @var string
      */
-    protected $redirectTo = '/user/home';
+    protected $redirectTo = 'home';
 
     /**
      * Create a new controller instance.
@@ -44,23 +44,30 @@ class LoginController extends Controller {
      * @return RedirectResponse
      */
     public function login( Request $request ): RedirectResponse {
-        $input = $request->all();
-
         $this->validate( $request, [
-            'email'    => 'required|email',
+            'login'    => 'required',
             'password' => 'required',
         ] );
 
-        if ( auth()->attempt( ['email' => $input['email'], 'password' => $input['password']] ) ) {
-            if ( auth()->user()->type == 'admin' ) {
-                return redirect()->route( 'admin.home' );
-            } else {
-                return redirect()->route( 'home' );
+        $loginInput = $request->login;
+        $password   = $request->password;
+        $type       = $request->login_type;
+
+        if ( $type === 'email' ) {
+            if ( auth()->attempt( ['email' => $loginInput, 'password' => $password] ) ) {
+                return auth()->user()->type === 'admin'
+                ? redirect()->route( 'admin.home' )
+                : redirect()->route( 'home' );
             }
         } else {
-            return redirect()->route( 'login' )
-                ->with( 'error', 'Email-Address And Password Are Wrong.' );
+            if ( auth()->attempt( ['student_id' => $loginInput, 'password' => $password, 'type' => 'user'] ) ) {
+                return redirect()->route( 'home' );
+            }
         }
 
+        return redirect()->route( 'login' )
+            ->with( 'error', 'আপনার দেওয়া তথ্যগুলো সঠিক নয়।' )
+            ->withInput();
     }
+
 }

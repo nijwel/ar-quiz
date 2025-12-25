@@ -121,10 +121,15 @@
         <div class="row">
             @foreach ($quizzes as $quiz)
                 @php
-                    $score = quizResult($quiz->id, $participant->id);
-                    $totalQ = $quiz->questions->count();
+                    $userAnswers = $quiz->userAnswers;
+                    $totalQ = $quiz->questions_count;
+                    $attempted = $userAnswers->count();
+                    $right = $userAnswers->where('status', 'correct')->count();
+                    $wrong = $attempted - $right;
+                    $score = $right;
                     $percentage = $totalQ > 0 ? ($score / $totalQ) * 100 : 0;
                 @endphp
+
                 <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card result-card">
                         <div class="card-body p-4">
@@ -140,18 +145,15 @@
                                 </div>
                                 <div class="stat-row">
                                     <span class="stat-label">Attempted</span>
-                                    <span
-                                        class="stat-value text-primary">{{ totalAnswers($quiz->id, $participant->id) }}</span>
+                                    <span class="stat-value text-primary">{{ $attempted }}</span>
                                 </div>
                                 <div class="stat-row">
                                     <span class="stat-label text-success">Correct Answers</span>
-                                    <span
-                                        class="stat-value text-success">{{ rightAnswer($quiz->id, $participant->id) }}</span>
+                                    <span class="stat-value text-success">{{ $right }}</span>
                                 </div>
                                 <div class="stat-row">
                                     <span class="stat-label text-danger">Wrong Answers</span>
-                                    <span
-                                        class="stat-value text-danger">{{ wrongAnswer($quiz->id, $participant->id) }}</span>
+                                    <span class="stat-value text-danger">{{ $wrong }}</span>
                                 </div>
                             </div>
 

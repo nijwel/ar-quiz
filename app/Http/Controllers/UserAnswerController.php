@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Answer;
 use App\Models\Quiz;
 use App\Models\UserAnswer;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class UserAnswerController extends Controller {
@@ -94,8 +95,30 @@ class UserAnswerController extends Controller {
     /**
      * Display the specified resource.
      */
+    // public function show( string $quiz ) {
+    //     $quiz = Quiz::with( 'questions.answers' )->whereSlug( $quiz )->first();
+    //     return view( 'user.quiz.view', compact( 'quiz' ) );
+    // }
     public function show( string $quiz ) {
-        $quiz = Quiz::with( 'questions.answers' )->whereSlug( $quiz )->first();
+        $quiz = Quiz::whereSlug( $quiz )
+            ->with( ['questions' => function ( $query ) {
+                $query->inRandomOrder()
+                    ->with( ['answers' => function ( $q ) {
+                        $q->inRandomOrder();
+                    }] );
+            }] )
+            ->firstOrFail();
+
+        if ( $quiz->start_exam_at && now()->lt( $quiz->start_exam_at ) ) {
+            return redirect()
+                ->route( 'user.quiz.index' )
+                ->with(
+                    'warning',
+                    'The quiz is not available at the moment. It is scheduled to start on ' . Carbon::parse( $quiz->start_exam_at )->toDayDateTimeString() . '.'
+                );
+
+        }
+
         return view( 'user.quiz.view', compact( 'quiz' ) );
     }
 

@@ -53,6 +53,7 @@
         .btn-start-quiz:hover {
             background: #f8f9fa;
             transform: scale(1.05);
+            color: var(--quiz-primary);
         }
     </style>
 

@@ -19,7 +19,9 @@ All Normal Users Routes List
 Route::prefix( 'user' )->middleware( ['auth', 'user-access:user'] )->group( function () {
 
     Route::get( '/home', [HomeController::class, 'index'] )->name( 'home' );
-
+    Route::get( '/profile', [HomeController::class, 'userProfile'] )->name( 'user.profile' );
+    Route::put( 'update/profile', [HomeController::class, 'updateProfile'] )->name( 'user.update.profile' );
+    Route::put( 'update/password', [HomeController::class, 'updatePassword'] )->name( 'user.update.password' );
     route::prefix( 'quizzes' )->group( function () {
         Route::get( '/', [UserAnswerController::class, 'index'] )->name( 'user.quiz.index' );
         Route::get( '/{quiz}', [UserAnswerController::class, 'show'] )->name( 'user.quiz.show' );
@@ -35,6 +37,9 @@ All Admin Routes List
 Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( function () {
 
     Route::get( '/home', [HomeController::class, 'adminHome'] )->name( 'admin.home' );
+    Route::get( '/profile', [HomeController::class, 'adminProfile'] )->name( 'admin.profile' );
+    Route::put( 'update/profile', [HomeController::class, 'updateProfile'] )->name( 'admin.profile.update' );
+    Route::put( 'update/password', [HomeController::class, 'updatePassword'] )->name( 'admin.password.update' );
 
     route::prefix( 'quiz' )->group( function () {
         Route::get( '/', [QuizController::class, 'index'] )->name( 'quiz.index' );
