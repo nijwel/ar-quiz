@@ -193,6 +193,10 @@
                     <ul class="navbar-nav me-auto ms-lg-4">
                         @auth
                             @if (Auth::user()->type == 'admin')
+                                <li class="nav-item {{ request()->is('admin/category*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('category.index') }}"><i
+                                            class="bi bi-journal-text me-1"></i> Category</a>
+                                </li>
                                 <li class="nav-item {{ request()->is('admin/quiz*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('quiz.index') }}"><i
                                             class="bi bi-journal-text me-1"></i> Quizzes</a>

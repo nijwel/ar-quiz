@@ -104,7 +104,7 @@
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Quiz Title</label>
                             <input type="text" name="title" value="{{ old('title') }}"
-                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                class="form-control form-control-sm" placeholder="e.g. Basic Laravel Quiz" required
                                 style="border-radius: 10px;">
                         </div>
                         <div class="col-md-12 mb-3">
@@ -112,16 +112,24 @@
                             <textarea name="description" class="form-control" rows="2"
                                 placeholder="Briefly describe what this quiz is about..." style="border-radius: 10px;">{{ old('description') }}</textarea>
                         </div>
-                        <div class="col-md-6 mb-0">
+                        <div class="col-md-4 mb-3">
+                            <label for="category" class="form-label fw-bold">Category</label>
+                            <select name="category_id" id="" class="form-select form-select-sm">
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-0">
                             <label class="form-label fw-bold">Start Date & Time</label>
                             <input type="datetime-local" name="start_exam_at" value="{{ old('start_exam_at') }}"
-                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                class="form-control form-control-sm" placeholder="e.g. Basic Laravel Quiz" required
                                 style="border-radius: 10px;">
                         </div>
-                        <div class="col-md-6 mb-0">
+                        <div class="col-md-4 mb-0">
                             <label class="form-label fw-bold">End Date & Time</label>
                             <input type="datetime-local" name="end_exam_at" value="{{ old('end_exam_at') }}"
-                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                class="form-control form-control-sm" placeholder="e.g. Basic Laravel Quiz" required
                                 style="border-radius: 10px;">
                         </div>
                     </div>
@@ -139,7 +147,7 @@
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Question Text</label>
                         <input type="text" name="questions[0][text]" value="{{ old('questions.0.text') }}"
-                            class="form-control" placeholder="What is the capital of...?" required
+                            class="form-control form-control-sm" placeholder="What is the capital of...?" required
                             style="border-radius: 8px;">
                     </div>
 
@@ -149,8 +157,8 @@
                             <div class="col-md-6 mb-3">
                                 <div class="answer-input-group border">
                                     <input type="text" name="questions[0][answers][{{ $i }}]"
-                                        class="form-control mb-2" placeholder="Option {{ $i + 1 }}" required
-                                        style="border-radius: 8px;">
+                                        class="form-control form-control-sm mb-2" placeholder="Option {{ $i + 1 }}"
+                                        required style="border-radius: 8px;">
                                     <div class="form-check">
                                         <input type="radio" name="questions[0][correct]" value="{{ $i }}"
                                             class="form-check-input" {{ $i == 0 ? 'checked' : '' }}>
@@ -168,7 +176,7 @@
                     style="border-radius: 12px;">
                     <i class="bi bi-plus-lg me-2"></i> Add Another Question
                 </button>
-                <button type="submit" class="btn btn-submit shadow">
+                <button type="submit" class="btn btn-sm btn-submit shadow">
                     <i class="bi bi-check2-circle me-2"></i> Save Quiz Now
                 </button>
             </div>
@@ -195,7 +203,7 @@
 
             <div class="mb-4">
                 <label class="form-label fw-semibold">Question Text</label>
-                <input type="text" name="questions[${questionIndex}][text]" class="form-control" placeholder="Enter question..." required style="border-radius: 8px;">
+                <input type="text" name="questions[${questionIndex}][text]" class="form-control form-control-sm" placeholder="Enter question..." required style="border-radius: 8px;">
             </div>
 
             <div class="row">
@@ -206,7 +214,7 @@
                 html += `
                 <div class="col-md-6 mb-3">
                     <div class="answer-input-group border">
-                        <input type="text" name="questions[${questionIndex}][answers][${i}]" class="form-control mb-2" placeholder="Option ${i+1}" required style="border-radius: 8px;">
+                        <input type="text" name="questions[${questionIndex}][answers][${i}]" class="form-control form-control-sm mb-2" placeholder="Option ${i+1}" required style="border-radius: 8px;">
                         <div class="form-check">
                             <input type="radio" name="questions[${questionIndex}][correct]" value="${i}" class="form-check-input" ${i == 0 ? 'checked' : ''}>
                             <label class="form-check-label text-success fw-bold small">Correct Answer</label>

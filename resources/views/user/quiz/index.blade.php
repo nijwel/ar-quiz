@@ -74,6 +74,17 @@
                 <h2 class="fw-bold mb-1"><i class="bi bi-journal-check me-2"></i>Available Quizzes</h2>
                 <p class="mb-0 opacity-75">আপনার পছন্দের কুইজটি বেছে নিন এবং নিজেকে যাচাই করুন।</p>
             </div>
+            <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+                <div class="form-group">
+                    <select name="category" id="category" class="form-select form-select-sm">
+                        <option value="all" selected>All</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->slug }}" @selected(request('category') == $category->slug)>{{ $category->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
             <div class="d-flex align-items-center gap-3">
                 <div class="text-end d-none d-sm-block">
                     <small class="opacity-75 d-block">Total Points</small>
@@ -110,6 +121,8 @@
                                 <div class="icon-circle">
                                     <i class="bi bi-patch-question"></i>
                                 </div>
+                                <span
+                                    class="badge bg-secondary-subtle text-secondary stat-badge">{{ $quiz->category?->name }}</span>
                                 @if ($result['attempted'])
                                     <span class="badge bg-success-subtle text-success stat-badge">Completed</span>
                                 @else
@@ -211,3 +224,20 @@
         </div>
     </div>
 @endsection
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var categorySelect = document.getElementById("category");
+
+        categorySelect.addEventListener("change", function() {
+            var category = this.value;
+            var baseUrl = "{{ route('user.quiz.index') }}";
+
+            if (category === "all") {
+                window.location.href = baseUrl;
+            } else {
+                window.location.href = baseUrl + "?category=" + encodeURIComponent(category);
+            }
+        });
+    });
+</script>

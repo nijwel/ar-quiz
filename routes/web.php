@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\QuizController;
@@ -41,6 +42,15 @@ Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( fu
     Route::get( '/profile', [HomeController::class, 'adminProfile'] )->name( 'admin.profile' );
     Route::put( 'update/profile', [HomeController::class, 'updateProfile'] )->name( 'admin.profile.update' );
     Route::put( 'update/password', [HomeController::class, 'updatePassword'] )->name( 'admin.password.update' );
+
+    Route::prefix( 'category' )->group( function () {
+        Route::get( '/', [CategoryController::class, 'index'] )->name( 'category.index' );
+        Route::get( '/create', [CategoryController::class, 'create'] )->name( 'category.create' );
+        Route::post( '/store', [CategoryController::class, 'store'] )->name( 'category.store' );
+        Route::get( '/edit/{id}', [CategoryController::class, 'edit'] )->name( 'category.edit' );
+        Route::put( '/update/{id}', [CategoryController::class, 'update'] )->name( 'category.update' );
+        Route::delete( '/destroy/{id}', [CategoryController::class, 'destroy'] )->name( 'category.destroy' );
+    } );
 
     route::prefix( 'quiz' )->group( function () {
         Route::get( '/', [QuizController::class, 'index'] )->name( 'quiz.index' );

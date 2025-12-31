@@ -93,23 +93,32 @@
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Quiz Title</label>
                             <input type="text" name="title" value="{{ old('title', $quiz->title) }}"
-                                class="form-control form-control-lg" required style="border-radius: 10px;">
+                                class="form-control form-control-sm" required style="border-radius: 10px;">
                         </div>
-                        <div class="col-md-12 mb-0">
+                        <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Description</label>
                             <textarea name="description" class="form-control" rows="2" style="border-radius: 10px;">{{ old('description', $quiz->description) }}</textarea>
                         </div>
-                        <div class="col-md-6 mb-0">
+                        <div class="col-md-4 mb-3">
+                            <label for="category" class="form-label fw-bold">Category</label>
+                            <select name="category_id" id="" class="form-select form-select-sm">
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}" @selected(old('category_id', $quiz->category_id) == $category->id)>{{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-0">
                             <label class="form-label fw-bold">Start Date & Time</label>
                             <input type="datetime-local" name="start_exam_at"
                                 value="{{ old('start_exam_at', $quiz->start_exam_at) }}"
-                                class="form-control form-control-lg" placeholder="e.g. Basic Laravel Quiz" required
+                                class="form-control form-control-sm" placeholder="e.g. Basic Laravel Quiz" required
                                 style="border-radius: 10px;">
                         </div>
-                        <div class="col-md-6 mb-0">
+                        <div class="col-md-4 mb-0">
                             <label class="form-label fw-bold">End Date & Time</label>
                             <input type="datetime-local" name="end_exam_at"
-                                value="{{ old('end_exam_at', $quiz->end_exam_at) }}" class="form-control form-control-lg"
+                                value="{{ old('end_exam_at', $quiz->end_exam_at) }}" class="form-control form-control-sm"
                                 placeholder="e.g. Basic Laravel Quiz" required style="border-radius: 10px;">
                         </div>
                     </div>
@@ -135,7 +144,8 @@
                         <div class="mb-4">
                             <label class="form-label fw-semibold">Question Text</label>
                             <input type="text" name="questions[{{ $qIndex }}][text]"
-                                value="{{ $question->question }}" class="form-control" required style="border-radius: 8px;">
+                                value="{{ $question->question }}" class="form-control" required
+                                style="border-radius: 8px;">
                         </div>
 
                         <div class="row">

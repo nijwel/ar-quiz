@@ -9,15 +9,11 @@ return new class extends Migration {
      * Run the migrations.
      */
     public function up(): void {
-        Schema::create( 'quizzes', function ( Blueprint $table ) {
+        Schema::create( 'categories', function ( Blueprint $table ) {
             $table->id();
-            $table->foreignId( 'category_id' )->constrained()->onDelete( 'cascade' );
-            $table->string( 'title' );
+            $table->string( 'name' );
             $table->string( 'slug' );
-            $table->text( 'description' )->nullable();
             $table->boolean( 'status' )->default( false );
-            $table->datetime( 'start_exam_at' )->nullable();
-            $table->datetime( 'end_exam_at' )->nullable();
             $table->timestamps();
         } );
     }
@@ -26,6 +22,6 @@ return new class extends Migration {
      * Reverse the migrations.
      */
     public function down(): void {
-        Schema::dropIfExists( 'quizzes' );
+        Schema::dropIfExists( 'categories' );
     }
 };

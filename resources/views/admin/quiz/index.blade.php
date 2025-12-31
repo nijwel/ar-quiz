@@ -90,6 +90,18 @@
             </div>
         </div>
 
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+            <div class="form-group">
+                <label for="category" class="form-label fw-bold">Category</label>
+                <select name="category" id="category" class="form-select form-select-sm">
+                    <option value="all" selected>All</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}" @selected(request('category') == $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
         @if (session('success'))
             <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 15px;">
                 <i class="bi bi-check-circle-fill me-3 fs-4"></i>
@@ -115,6 +127,7 @@
                             <tr>
                                 <th class="ps-4">ID</th>
                                 <th>Quiz Details</th>
+                                <th>Category</th>
                                 <th>Description</th>
                                 <th>Start Date & Time</th>
                                 <th>End Date & Time</th>
@@ -129,6 +142,9 @@
                                         <div class="fw-bold text-dark fs-6">{{ $quiz->title }}</div>
                                         <small class="text-muted"><i class="bi bi-question-circle me-1"></i>
                                             {{ $quiz->questions_count }} Questions</small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark fs-6">{{ $quiz->category?->name }}</div>
                                     </td>
                                     <td class="text-muted small" style="max-width: 300px;">
                                         {{ Str::limit($quiz->description, 80) }}
@@ -230,3 +246,20 @@
         </div>
     </div>
 @endsection
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var categorySelect = document.getElementById("category");
+
+        categorySelect.addEventListener("change", function() {
+            var category = this.value;
+            var baseUrl = "{{ route('quiz.index') }}";
+
+            if (category === "all") {
+                window.location.href = baseUrl;
+            } else {
+                window.location.href = baseUrl + "?category=" + encodeURIComponent(category);
+            }
+        });
+    });
+</script>

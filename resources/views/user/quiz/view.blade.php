@@ -196,6 +196,7 @@
                     <div class="text-white">
                         <h4 class="fw-bold mb-0">{{ $quiz->title }}</h4>
                         <p class="mb-0 opacity-75 small d-none d-md-block">সময় শেষ হওয়ার আগে উত্তর জমা দিন।</p>
+                        <span class="fs-6 badge bg-warning-subtle text-warning text-dark">{{ $quiz->category->name }}</span>
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
@@ -238,12 +239,13 @@
                                                 <label class="option-container">
                                                     <input type="radio" name="answers[{{ $question->id }}]"
                                                         value="{{ $answer->id }}">
-                                                    <span>{{ $answer->answer }}</span>
+                                                    <span>{{ $loop->iteration }}. {{ $answer->answer }}</span>
                                                     <span class="checkmark"></span>
                                                 </label>
                                             @endforeach
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         @endforeach
@@ -263,7 +265,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // ডাইনামিক সময় সেট: প্রশ্নের সংখ্যা * ৬০ সেকেন্ড
             const questionCount = {{ $quiz->questions->count() }};
-            const totalTimeInSeconds = questionCount * 60;
+            const totalTimeInSeconds = questionCount * 45;
 
             const quizId = "{{ $quiz->id }}";
             const storageKey = `quiz_timer_${quizId}`;
@@ -277,7 +279,6 @@
             let timeRemaining;
             let timerInterval;
 
-            // চেক করা হচ্ছে আগে থেকে টাইমার চলছে কিনা
             const savedTime = localStorage.getItem(storageKey);
             if (savedTime) {
                 initQuiz(parseInt(savedTime));
@@ -338,13 +339,12 @@
             };
         });
 
-        // লাইভ আনসার কাউন্ট লজিক
         const totalQuestions = {{ $quiz->questions->count() }};
         const answeredDisplay = document.getElementById('answered-count');
         const radioButtons = quizForm.querySelectorAll('input[type="radio"]');
 
         function updateAnsweredCount() {
-            // কয়টি আলাদা আলাদা নামের (question_id) রেডিও বাটন সিলেক্ট করা হয়েছে তা চেক করবে
+
             const answeredQuestions = new Set();
             radioButtons.forEach(radio => {
                 if (radio.checked) {
@@ -353,18 +353,15 @@
             });
             answeredDisplay.textContent = answeredQuestions.size;
 
-            // সব উত্তর দেওয়া হয়ে গেলে কালার পরিবর্তন (ঐচ্ছিক)
             if (answeredQuestions.size === totalQuestions) {
                 answeredDisplay.classList.replace('text-primary', 'text-success');
             }
         }
 
-        // প্রতিটি রেডিও বাটনে ইভেন্ট লিসেনার যোগ করা
         radioButtons.forEach(radio => {
             radio.addEventListener('change', updateAnsweredCount);
         });
 
-        // পেজ রিফ্রেশ হলে বা আগে থেকে উত্তর সেভ থাকলে তা দেখানোর জন্য একবার কল করা
         updateAnsweredCount();
     </script>
 @endsection

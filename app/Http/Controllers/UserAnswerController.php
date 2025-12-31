@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Answer;
+use App\Models\Category;
 use App\Models\Quiz;
 use App\Models\UserAnswer;
 use Carbon\Carbon;
@@ -21,22 +22,32 @@ class UserAnswerController extends Controller {
     public function index() {
         $userId = auth()->id();
 
-        // Total marks (DB level filtering)
+        $categoryId = Category::where( 'slug', request( 'category' ) )
+            ->value( 'id' );
+
         $totalMarks = UserAnswer::where( 'user_id', $userId )
             ->where( 'status', 'correct' )
             ->count();
 
-        // Quizzes with questions
-        $quizzes = Quiz::with( 'questions' )->latest()->get();
+        $quizzes = Quiz::with( ['category'] )
+            ->withCount( 'questions' )
+            ->when( $categoryId, function ( $q ) use ( $categoryId ) {
+                $q->where( 'category_id', $categoryId );
+            } )
+            ->latest()
+            ->get();
 
-        // All answers of this user (ONE query)
-        $userAnswers = UserAnswer::where( 'user_id', $userId )->get();
+        $userAnswers = UserAnswer::where( 'user_id', $userId )
+            ->select( 'quiz_id', 'status' )
+            ->get()
+            ->groupBy( 'quiz_id' );
 
-        // Quiz wise result prepare
+        $categories = Category::where( 'status', true )->get();
+
         $quizResults = [];
 
         foreach ( $quizzes as $quiz ) {
-            $answers = $userAnswers->where( 'quiz_id', $quiz->id );
+            $answers = $userAnswers->get( $quiz->id, collect() );
 
             $right = $answers->where( 'status', 'correct' )->count();
             $wrong = $answers->where( 'status', 'incorrect' )->count();
@@ -44,7 +55,7 @@ class UserAnswerController extends Controller {
 
             $quizResults[$quiz->id] = [
                 'marks'           => $right,
-                'total_questions' => $quiz->questions->count(),
+                'total_questions' => $quiz->questions_count,
                 'total_answers'   => $total,
                 'right'           => $right,
                 'wrong'           => $wrong,
@@ -55,7 +66,8 @@ class UserAnswerController extends Controller {
         return view( 'user.quiz.index', compact(
             'quizzes',
             'totalMarks',
-            'quizResults'
+            'quizResults',
+            'categories'
         ) );
     }
 
@@ -106,7 +118,7 @@ class UserAnswerController extends Controller {
                     ->with( ['answers' => function ( $q ) {
                         $q->inRandomOrder();
                     }] );
-            }] )
+            }, 'category:id,name'] )
             ->firstOrFail();
 
         if ( $quiz->end_exam_at && now()->gt( $quiz->end_exam_at ) ) {

@@ -76,7 +76,7 @@ class ParticipantController extends Controller {
             ->withCount( 'questions' )
             ->with( ['userAnswers' => function ( $query ) use ( $id ) {
                 $query->where( 'user_id', $id );
-            }] )
+            }, 'category'] )
             ->get();
 
         return view( 'admin.participants.view', compact( 'participant', 'quizzes' ) );

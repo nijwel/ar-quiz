@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Quiz extends Model {
 
     protected $fillable = [
+        'category_id',
         'title',
         'slug',
         'description',
@@ -35,6 +36,10 @@ class Quiz extends Model {
 
     public function userAnswers() {
         return $this->hasMany( UserAnswer::class, 'quiz_id' );
+    }
+
+    public function category() {
+        return $this->belongsTo( Category::class );
     }
 
 }
