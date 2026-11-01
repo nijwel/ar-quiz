@@ -6,6 +6,7 @@ use App\Models\Quiz;
 use App\Models\User;
 use App\Models\UserAnswer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class HomeController extends Controller {
     /**
@@ -56,7 +57,18 @@ class HomeController extends Controller {
         $quizCount = Quiz::count();
 
         $userCount = User::whereType( 'user' )->count();
-        return view( 'admin.home', compact( 'quizCount', 'userCount' ) );
+
+        $activeCount = Quiz::where( 'start_exam_at', '<=', now() )
+            ->where( 'end_exam_at', '>=', now() )
+            ->count();
+
+        $recentQuizzes = Quiz::with( 'category:id,name' )
+            ->withCount( 'questions' )
+            ->latest()
+            ->take( 5 )
+            ->get();
+
+        return view( 'admin.home', compact( 'quizCount', 'userCount', 'activeCount', 'recentQuizzes' ) );
     }
 
     /**

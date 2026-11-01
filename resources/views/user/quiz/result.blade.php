@@ -1,175 +1,115 @@
 @extends('layouts.app')
 
+@section('title', 'Result · ' . $quiz->title)
+
 @section('content')
-    <style>
-        :root {
-            --quiz-primary: #4e54c8;
-            --quiz-secondary: #764ba2;
-            --quiz-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
+    @php
+        $total = $quiz->questions->count();
+        $percent = $total ? round(($rightAnswers / $total) * 100) : 0;
+        [$verdict, $verdictTone] = match (true) {
+            $percent >= 80 => ['অসাধারণ! 🎉', 'text-volt-400'],
+            $percent >= 50 => ['ভালো করেছেন! 👍', 'text-emerald-400'],
+            default => ['আরও চেষ্টা করুন 💪', 'text-amber-400'],
+        };
+    @endphp
 
-        .result-header {
-            background: var(--quiz-gradient);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
+    {{-- Score hero --}}
+    <section class="relative mb-8 animate-rise overflow-hidden rounded-[2rem] glass-panel p-7 text-white sm:p-10">
+        <div class="absolute inset-0 bg-grid [mask-image:linear-gradient(to_left,black,transparent)]"></div>
+        <div class="absolute -top-24 -right-10 size-80 rounded-full bg-brand-600/50 blur-3xl"></div>
 
-        .stat-box {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 15px;
-            border-radius: 15px;
-            text-align: center;
-            min-width: 120px;
-            backdrop-filter: blur(5px);
-        }
-
-        .question-card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
-            overflow: hidden;
-        }
-
-        .status-badge {
-            padding: 5px 15px;
-            border-radius: 50px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .answer-item {
-            padding: 12px 15px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            border: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .correct-answer {
-            background-color: #d1e7dd;
-            border-color: #badbcc;
-            color: #0f5132;
-        }
-
-        .wrong-answer {
-            background-color: #f8d7da;
-            border-color: #f5c2c7;
-            color: #842029;
-        }
-
-        .user-selected {
-            position: relative;
-        }
-
-        .user-selected::after {
-            content: "Your Answer";
-            position: absolute;
-            right: 15px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            opacity: 0.7;
-        }
-    </style>
-
-    <div class="container py-4">
-        <div class="result-header">
-            <div class="row align-items-center">
-                <div class="col-lg-6 text-center text-lg-start mb-4 mb-lg-0">
-                    <h2 class="fw-bold mb-1">Quiz Analysis: {{ $quiz->title }}</h2>
-                    <p class="opacity-75 mb-0">আপনার পারফরম্যান্সের বিস্তারিত নিচে দেখুন।</p>
-                    <div class="mt-4">
-                        <a href="{{ route('home') }}" class="btn btn-light fw-bold px-4 me-2"
-                            style="border-radius: 10px; color: var(--quiz-primary);">
-                            <i class="bi bi-house-door"></i> Home
-                        </a>
-                        <a href="{{ route('user.quiz.index') }}" class="btn btn-outline-light fw-bold px-4"
-                            style="border-radius: 10px;">
-                            All Exams
-                        </a>
+        <div class="relative grid items-center gap-8 md:grid-cols-[auto_1fr]">
+            <div class="relative mx-auto size-44">
+                <svg viewBox="0 0 36 36" class="size-44 -rotate-90">
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="3" class="stroke-white/10" />
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="3" stroke-linecap="round"
+                        class="stroke-volt-400" stroke-dasharray="{{ $percent * 0.974 }} 100" />
+                </svg>
+                <div class="absolute inset-0 grid place-items-center text-center">
+                    <div>
+                        <p class="font-display text-5xl font-extrabold">{{ $percent }}<span class="text-2xl">%</span></p>
+                        <p class="text-xs font-semibold tracking-wider text-ink-400 uppercase">Accuracy</p>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="d-flex flex-wrap justify-content-center gap-3">
-                        <div class="stat-box">
-                            <small class="d-block opacity-75">Score</small>
-                            <span class="fs-3 fw-bold">{{ $totalMarks }}</span>
-                        </div>
-                        <div class="stat-box">
-                            <small class="d-block opacity-75">Right</small>
-                            <span class="fs-3 fw-bold text-success">{{ $rightAnswers }}</span>
-                        </div>
-                        <div class="stat-box">
-                            <small class="d-block opacity-75">Wrong</small>
-                            <span class="fs-3 fw-bold text-danger">{{ $wrongAnswers }}</span>
-                        </div>
+            </div>
+
+            <div class="text-center md:text-left">
+                <p class="font-display text-lg font-bold {{ $verdictTone }}">{{ $verdict }}</p>
+                <h1 class="mt-1 font-display text-2xl font-bold sm:text-3xl">{{ $quiz->title }}</h1>
+                <p class="mt-1 text-sm text-ink-400">আপনার পারফরম্যান্সের বিস্তারিত নিচে দেখুন।</p>
+
+                <div class="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
+                    <div class="rounded-2xl bg-white/5 p-3 text-center ring-1 ring-white/10">
+                        <p class="text-[11px] font-semibold text-ink-400 uppercase">Score</p>
+                        <p class="font-display text-2xl font-bold">{{ $totalMarks }}</p>
                     </div>
+                    <div class="rounded-2xl bg-emerald-500/10 p-3 text-center ring-1 ring-emerald-400/20">
+                        <p class="text-[11px] font-semibold text-emerald-300 uppercase">Right</p>
+                        <p class="font-display text-2xl font-bold text-emerald-400">{{ $rightAnswers }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-rose-500/10 p-3 text-center ring-1 ring-rose-400/20">
+                        <p class="text-[11px] font-semibold text-rose-300 uppercase">Wrong</p>
+                        <p class="font-display text-2xl font-bold text-rose-400">{{ $wrongAnswers }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-wrap justify-center gap-2 md:justify-start">
+                    <a href="{{ route('user.quiz.index') }}" class="btn btn-volt">
+                        <span class="icon-[tabler--file-pencil] size-4"></span> All Exams
+                    </a>
+                    <a href="{{ route('user.quiz.leaderboard') }}" class="btn btn-glass">
+                        <span class="icon-[tabler--trophy] size-4"></span> Leaderboard
+                    </a>
                 </div>
             </div>
         </div>
+    </section>
 
-        @if (session('success'))
-            <div class="alert alert-success border-0 shadow-sm mb-4" style="border-radius: 15px;">
-                <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            </div>
-        @endif
+    <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold text-white">
+        <span class="icon-[tabler--list-check] size-6 text-brand-400"></span> Answer Review
+    </h2>
 
-        <div class="row">
-            @foreach ($quiz->questions as $index => $question)
-                <div class="col-lg-6">
-                    <div class="card question-card">
-                        <div
-                            class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-start">
-                            <h5 class="fw-bold text-dark mb-0" style="max-width: 70%;">
-                                <span class="text-primary">Q{{ $index + 1 }}.</span> {{ $question->question }}
-                            </h5>
-                            @if ($question->is_correct)
-                                <span class="badge bg-success status-badge">Correct</span>
+    <div class="grid gap-5 lg:grid-cols-2">
+        @foreach ($quiz->questions as $index => $question)
+            <div class="card overflow-hidden">
+                <div class="flex items-start gap-3 p-5 pb-4">
+                    <span class="grid size-9 shrink-0 place-items-center rounded-xl font-display text-sm font-bold {{ $question->is_correct ? 'bg-emerald-500 text-snow' : 'bg-rose-500 text-snow' }}">
+                        {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}
+                    </span>
+                    <h3 class="flex-1 pt-1 font-semibold text-white">{{ $question->question }}</h3>
+                    @if ($question->is_correct)
+                        <span class="badge bg-emerald-500/10 text-emerald-300"><span class="icon-[tabler--check] size-3.5"></span> Correct</span>
+                    @else
+                        <span class="badge bg-rose-500/10 text-rose-300"><span class="icon-[tabler--x] size-3.5"></span> Incorrect</span>
+                    @endif
+                </div>
+                <div class="space-y-2 px-5 pb-5">
+                    @foreach ($question->answers as $answer)
+                        @php
+                            $isCorrect = $answer->is_correct;
+                            $isUserAnswer = $question->user_answer_id == $answer->id;
+                        @endphp
+                        <div @class([
+                            'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm ring-1',
+                            'bg-emerald-500/10 text-emerald-300 ring-emerald-500/25 font-semibold' => $isCorrect,
+                            'bg-rose-500/10 text-rose-300 ring-rose-500/25 font-semibold' => $isUserAnswer && !$isCorrect,
+                            'bg-white/5 text-ink-300 ring-white/10' => !$isCorrect && !$isUserAnswer,
+                        ])>
+                            @if ($isCorrect)
+                                <span class="icon-[tabler--circle-check-filled] size-5 shrink-0 text-emerald-500"></span>
+                            @elseif ($isUserAnswer)
+                                <span class="icon-[tabler--circle-x-filled] size-5 shrink-0 text-rose-500"></span>
                             @else
-                                <span class="badge bg-danger status-badge">Incorrect</span>
+                                <span class="icon-[tabler--circle] size-5 shrink-0 text-ink-300"></span>
+                            @endif
+                            <span class="flex-1">{{ $answer->answer }}</span>
+                            @if ($isUserAnswer)
+                                <span class="text-[10px] font-bold tracking-wider uppercase opacity-70">Your answer</span>
                             @endif
                         </div>
-
-                        <div class="card-body px-4 pb-4">
-                            <div class="answers-review mt-2">
-                                @foreach ($question->answers as $answer)
-                                    @php
-                                        $isCorrect = $answer->is_correct;
-                                        $isUserAnswer = $question->user_answer_id == $answer->id;
-
-                                        $class = '';
-                                        if ($isCorrect) {
-                                            $class = 'correct-answer';
-                                        } elseif ($isUserAnswer && !$isCorrect) {
-                                            $class = 'wrong-answer';
-                                        }
-                                    @endphp
-
-                                    <div
-                                        class="answer-item {{ $class }} {{ $isUserAnswer ? 'user-selected' : '' }}">
-                                        @if ($isCorrect)
-                                            <i class="bi bi-check-circle-fill"></i>
-                                        @elseif ($isUserAnswer && !$isCorrect)
-                                            <i class="bi bi-x-circle-fill"></i>
-                                        @else
-                                            <i class="bi bi-circle text-muted"></i>
-                                        @endif
-
-                                        <span>{{ $answer->answer }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                    @endforeach
                 </div>
-            @endforeach
-        </div>
+            </div>
+        @endforeach
     </div>
 @endsection

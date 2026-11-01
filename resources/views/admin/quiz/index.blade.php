@@ -1,265 +1,205 @@
 @extends('layouts.app')
 
+@section('title', 'Quizzes')
+
 @section('content')
-    <style>
-        :root {
-            --quiz-primary: #4e54c8;
-            --quiz-secondary: #764ba2;
-            --quiz-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .page-header {
-            background: var(--quiz-gradient);
-            color: white;
-            padding: 30px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(78, 84, 200, 0.2);
-        }
-
-        .quiz-card {
-            border: none;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            background: #fff;
-            overflow: hidden;
-        }
-
-        .table thead th {
-            background-color: #f8f9fa;
-            color: var(--quiz-primary);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            padding: 20px;
-            border: none;
-        }
-
-        .btn-action {
-            width: 35px;
-            height: 35px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            transition: 0.3s;
-        }
-
-        .btn-upload {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            color: white;
-            backdrop-filter: blur(5px);
-        }
-
-        .btn-upload:hover {
-            background: white;
-            color: var(--quiz-primary);
-        }
-
-        .modal-content {
-            border: none;
-            border-radius: 20px;
-        }
-
-        .modal-header {
-            background: var(--quiz-gradient);
-            color: white;
-            border-radius: 20px 20px 0 0;
-        }
-
-        .modal-header .btn-close {
-            filter: brightness(0) invert(1);
-        }
-    </style>
-
-    <div class="container py-4">
-        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h2 class="fw-bold mb-1"><i class="bi bi-journal-text me-2"></i> Quiz Management</h2>
-                <p class="mb-0 opacity-75">নতুন কুইজ তৈরি করুন অথবা ফাইল আপলোড করে কুইজ যোগ করুন।</p>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-upload fw-bold px-4 rounded-pill" data-bs-toggle="modal"
-                    data-bs-target="#staticBackdrop">
-                    <i class="bi bi-cloud-arrow-up-fill me-2"></i> Upload Quiz
+    <div x-data="{ upload: false }">
+        <x-page-hero icon="icon-[tabler--file-text]" title="Quiz Management"
+            subtitle="নতুন কুইজ তৈরি করুন অথবা JSON আপলোড করে কুইজ যোগ করুন।">
+            <x-slot:actions>
+                <button type="button" @click="upload = true" class="btn btn-glass">
+                    <span class="icon-[tabler--cloud-upload] size-4"></span> Upload JSON
                 </button>
-                <a href="{{ route('quiz.create') }}" class="btn btn-light fw-bold px-4 rounded-pill text-primary shadow-sm">
-                    <i class="bi bi-plus-lg me-2"></i> Create New
+                <a href="{{ route('quiz.create') }}" class="btn btn-volt">
+                    <span class="icon-[tabler--plus] size-4"></span> Create New
                 </a>
-            </div>
+            </x-slot:actions>
+        </x-page-hero>
+
+        {{-- Category filter --}}
+        <div class="mb-5 flex items-center gap-2 overflow-x-auto pb-1">
+            <span class="mr-1 flex shrink-0 items-center gap-1 text-xs font-bold tracking-wider text-ink-400 uppercase">
+                <span class="icon-[tabler--filter] size-4"></span> Filter
+            </span>
+            @php $current = request('category'); @endphp
+            <a href="{{ route('quiz.index') }}"
+                class="badge shrink-0 px-3.5 py-2 text-sm transition {{ !$current ? 'bg-brand-600 text-snow shadow-lg shadow-brand-600/30' : 'bg-white/5 text-ink-300 ring-1 ring-white/10 hover:ring-white/20' }}">All</a>
+            @foreach ($categories as $category)
+                <a href="{{ route('quiz.index', ['category' => $category->id]) }}"
+                    class="badge shrink-0 px-3.5 py-2 text-sm transition {{ $current == $category->id ? 'bg-brand-600 text-snow shadow-lg shadow-brand-600/30' : 'bg-white/5 text-ink-300 ring-1 ring-white/10 hover:ring-white/20' }}">
+                    {{ $category->name }}
+                </a>
+            @endforeach
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-            <div class="form-group">
-                <label for="category" class="form-label fw-bold">Category</label>
-                <select name="category" id="category" class="form-select form-select-sm">
-                    <option value="all" selected>All</option>
-                    @foreach ($categories as $category)
-                        <option value="{{ $category->id }}" @selected(request('category') == $category->id)>{{ $category->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-
-        @if (session('success'))
-            <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 15px;">
-                <i class="bi bi-check-circle-fill me-3 fs-4"></i>
-                <div>{{ session('success') }}</div>
-            </div>
-        @endif
-
-        @if ($errors->any())
-            <div class="alert alert-danger border-0 shadow-sm mb-4" style="border-radius: 15px;">
-                <ul class="mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <div class="card quiz-card">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
+        <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Quiz</th>
+                            <th>Category</th>
+                            <th>Schedule</th>
+                            <th>Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($quizzes as $quiz)
+                            @php
+                                $start = $quiz->start_exam_at ? \Carbon\Carbon::parse($quiz->start_exam_at) : null;
+                                $end = $quiz->end_exam_at ? \Carbon\Carbon::parse($quiz->end_exam_at) : null;
+                                if ($start && $start->isFuture()) {
+                                    $status = ['Upcoming', 'bg-sky-500/10 text-sky-300', 'bg-sky-500'];
+                                } elseif ($end && $end->isPast()) {
+                                    $status = ['Ended', 'bg-white/10 text-ink-400', 'bg-ink-400'];
+                                } elseif ($start && $end) {
+                                    $status = ['Live', 'bg-amber-500/10 text-amber-300', 'bg-amber-500 animate-pulse'];
+                                } else {
+                                    $status = ['Open', 'bg-emerald-500/10 text-emerald-300', 'bg-emerald-500'];
+                                }
+                            @endphp
                             <tr>
-                                <th class="ps-4">ID</th>
-                                <th>Quiz Details</th>
-                                <th>Category</th>
-                                <th>Description</th>
-                                <th>Start Date & Time</th>
-                                <th>End Date & Time</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($quizzes as $quiz)
-                                <tr>
-                                    <td class="ps-4 fw-bold text-muted">#{{ $quiz->id }}</td>
-                                    <td>
-                                        <div class="fw-bold text-dark fs-6">{{ $quiz->title }}</div>
-                                        <small class="text-muted"><i class="bi bi-question-circle me-1"></i>
-                                            {{ $quiz->questions_count }} Questions</small>
-                                    </td>
-                                    <td>
-                                        <div class="fw-bold text-dark fs-6">{{ $quiz->category?->name }}</div>
-                                    </td>
-                                    <td class="text-muted small" style="max-width: 300px;">
-                                        {{ Str::limit($quiz->description, 80) }}
-                                    </td>
-                                    <td>
-                                        @if ($quiz->start_exam_at)
-                                            <div>{{ \Carbon\Carbon::parse($quiz->start_exam_at)->toDayDateTimeString() }}
-                                            </div>
-                                        @else
-                                            <small class="text-muted">No scheduled time</small>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if ($quiz->end_exam_at)
-                                            <div>{{ \Carbon\Carbon::parse($quiz->end_exam_at)->toDayDateTimeString() }}
-                                            </div>
-                                        @else
-                                            <small class="text-muted">No scheduled time</small>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="d-flex justify-content-center gap-2">
-                                            <a href="{{ route('quiz.edit', $quiz->id) }}"
-                                                class="btn btn-action btn-outline-primary" title="Edit Quiz">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </a>
-                                            <form action="{{ route('quiz.destroy', $quiz->id) }}" method="POST"
-                                                onsubmit="return confirm('আপনি কি নিশ্চিতভাবে এই কুইজটি ডিলিট করতে চান?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-action btn-outline-danger"
-                                                    title="Delete Quiz">
-                                                    <i class="bi bi-trash3-fill"></i>
-                                                </button>
-                                            </form>
+                                <td class="max-w-sm">
+                                    <div class="flex items-center gap-3">
+                                        <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 font-display text-xs font-bold text-volt-400">
+                                            #{{ $quiz->id }}
+                                        </span>
+                                        <div class="min-w-0">
+                                            <p class="truncate font-semibold text-white">{{ $quiz->title }}</p>
+                                            <p class="truncate text-xs text-ink-400">
+                                                <span class="icon-[tabler--help-circle] -mt-0.5 size-3.5 align-middle"></span>
+                                                {{ $quiz->questions_count }} Questions
+                                                @if ($quiz->description)
+                                                    · {{ Str::limit($quiz->description, 50) }}
+                                                @endif
+                                            </p>
                                         </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-brand-500/10 text-brand-300">{{ $quiz->category?->name ?? '—' }}</span>
+                                </td>
+                                <td class="text-xs whitespace-nowrap text-ink-300">
+                                    @if ($start || $end)
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="icon-[tabler--player-play] size-3.5 text-emerald-500"></span>
+                                            {{ $start?->format('d M Y, h:i A') ?? '—' }}
+                                        </div>
+                                        <div class="mt-1 flex items-center gap-1.5">
+                                            <span class="icon-[tabler--player-stop] size-3.5 text-rose-500"></span>
+                                            {{ $end?->format('d M Y, h:i A') ?? '—' }}
+                                        </div>
+                                    @else
+                                        <span class="text-ink-400">No schedule</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="badge {{ $status[1] }}"><span class="size-1.5 rounded-full {{ $status[2] }}"></span> {{ $status[0] }}</span>
+                                </td>
+                                <td>
+                                    <div class="flex justify-end gap-1.5">
+                                        <a href="{{ route('quiz.edit', $quiz->id) }}" class="btn btn-ghost btn-icon" title="Edit Quiz">
+                                            <span class="icon-[tabler--pencil] size-4"></span>
+                                        </a>
+                                        <form action="{{ route('quiz.destroy', $quiz->id) }}" method="POST"
+                                            onsubmit="return confirm('আপনি কি নিশ্চিতভাবে এই কুইজটি ডিলিট করতে চান?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger btn-icon" title="Delete Quiz">
+                                                <span class="icon-[tabler--trash] size-4"></span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-16 text-center">
+                                    <span class="icon-[tabler--file-off] mx-auto mb-2 block size-10 text-ink-300"></span>
+                                    <p class="text-ink-400">কোনো কুইজ পাওয়া যায়নি।</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-            <div class="card-footer bg-white border-0 p-4">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <div class="text-muted small">
-                        Showing <b>{{ $quizzes->count() }}</b> of <b>{{ $quizzes->total() }}</b> quizzes
-                    </div>
-                    <div>{{ $quizzes->links('pagination::bootstrap-5') }}</div>
-                </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-6 py-4">
+                <p class="text-sm text-ink-400">
+                    Showing <b class="text-white">{{ $quizzes->count() }}</b> of <b class="text-white">{{ $quizzes->total() }}</b> quizzes
+                </p>
+                {{ $quizzes->withQueryString()->links() }}
             </div>
         </div>
 
-        <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-            aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-cloud-arrow-up me-2"></i> Upload Quiz File</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form action="{{ route('quiz.upload') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <div class="modal-body p-4">
-                            <div class="text-center mb-4">
-                                <i class="bi bi-file-earmark-code text-primary" style="font-size: 3rem;"></i>
-                                <p class="text-muted small mt-2">দয়া করে শুধু JSON ফরম্যাট ফাইল আপলোড করুন।</p>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Select JSON File</label>
-                                <input class="form-control" type="file" name="quiz_file" accept="application/JSON"
-                                    style="border-radius: 10px;">
-                            </div>
-                            <div class="text-center text-muted fw-bold my-2">OR</div>
+        {{-- Upload modal --}}
+        <div x-cloak x-show="upload" class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true">
+            <div x-show="upload" x-transition.opacity class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
 
-                            <!-- JSON TEXTAREA -->
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Paste Quiz JSON</label>
-                                <textarea class="form-control" name="quiz_json" rows="10"
-                                    placeholder='{
+            <div x-show="upload" x-transition.scale.95 x-data="{ tab: 'file', fileName: '' }"
+                class="relative w-full max-w-lg overflow-hidden rounded-3xl bg-ink-950/90 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+                <div class="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-6 py-5 text-white">
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-10 place-items-center rounded-xl bg-white/10">
+                            <span class="icon-[tabler--file-code] size-5 text-volt-400"></span>
+                        </span>
+                        <div>
+                            <h3 class="font-display text-lg font-bold">Import Quiz</h3>
+                            <p class="text-xs text-ink-400">শুধু JSON ফরম্যাট সাপোর্টেড</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="upload = false" class="grid size-9 place-items-center rounded-xl hover:bg-white/10">
+                        <span class="icon-[tabler--x] size-5"></span>
+                    </button>
+                </div>
+
+                <form action="{{ route('quiz.upload') }}" method="POST" enctype="multipart/form-data" class="p-6">
+                    @csrf
+                    <div class="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1">
+                        <button type="button" @click="tab = 'file'"
+                            :class="tab === 'file' ? 'bg-white/10 shadow text-white' : 'text-ink-400'"
+                            class="flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition">
+                            <span class="icon-[tabler--upload] size-4"></span> Upload File
+                        </button>
+                        <button type="button" @click="tab = 'paste'"
+                            :class="tab === 'paste' ? 'bg-white/10 shadow text-white' : 'text-ink-400'"
+                            class="flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition">
+                            <span class="icon-[tabler--clipboard-text] size-4"></span> Paste JSON
+                        </button>
+                    </div>
+
+                    <div x-show="tab === 'file'">
+                        <label
+                            class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 px-6 py-10 text-center transition hover:border-brand-400 hover:bg-brand-500/10">
+                            <span class="icon-[tabler--cloud-upload] mb-3 size-10 text-brand-500"></span>
+                            <span class="text-sm font-semibold text-white" x-text="fileName || 'Click to choose a .json file'"></span>
+                            <span class="mt-1 text-xs text-ink-400">Max one file</span>
+                            <input type="file" name="quiz_file" accept="application/json,.json" class="sr-only"
+                                @change="fileName = $event.target.files[0]?.name || ''">
+                        </label>
+                    </div>
+
+                    <div x-show="tab === 'paste'" x-cloak>
+                        <textarea name="quiz_json" rows="10" class="input font-mono text-xs"
+                            placeholder='{
   "quiz": {
     "title": "Laravel Advanced Quiz",
+    "category": "Programming",
     "description": "...",
     "questions": []
   }
-}'
-                                    style="border-radius: 10px;"></textarea>
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 p-4 pt-0">
-                            <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal"
-                                style="border-radius: 10px;">Cancel</button>
-                            <button type="submit" class="btn btn-primary fw-bold px-4"
-                                style="border-radius: 10px; background: var(--quiz-primary);">Upload Now</button>
-                        </div>
-                    </form>
-                </div>
+}'></textarea>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" @click="upload = false" class="btn btn-ghost">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="icon-[tabler--file-import] size-4"></span> Import Now
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 @endsection
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var categorySelect = document.getElementById("category");
-
-        categorySelect.addEventListener("change", function() {
-            var category = this.value;
-            var baseUrl = "{{ route('quiz.index') }}";
-
-            if (category === "all") {
-                window.location.href = baseUrl;
-            } else {
-                window.location.href = baseUrl + "?category=" + encodeURIComponent(category);
-            }
-        });
-    });
-</script>

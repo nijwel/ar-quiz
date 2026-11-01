@@ -1,173 +1,99 @@
 @extends('layouts.app')
 
+@section('title', 'Leaderboard')
+
 @section('content')
-    <style>
-        :root {
-            --quiz-primary: #4e54c8;
-            --quiz-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
+    @php
+        $podium = $leaderboard->take(3);
+        // Display order: 2nd, 1st, 3rd
+        $podiumOrder = collect([1 => $podium->get(1), 0 => $podium->get(0), 2 => $podium->get(2)])->filter();
+        $podiumStyle = [
+            0 => ['h-36 sm:h-44', 'from-volt-300 to-volt-500 text-snow', 'icon-[tabler--crown]', 'text-volt-500'],
+            1 => ['h-28 sm:h-32', 'from-ink-100 to-ink-400 text-ink-950', 'icon-[tabler--medal]', 'text-ink-400'],
+            2 => ['h-24 sm:h-24', 'from-orange-400 to-orange-700 text-snow', 'icon-[tabler--medal]', 'text-amber-400'],
+        ];
+        $myIndex = $leaderboard->search(fn($row) => $row->user_id == Auth::id());
+    @endphp
 
-        .page-header {
-            background: var(--quiz-gradient);
-            color: white;
-            padding: 30px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(78, 84, 200, 0.2);
-        }
+    <x-page-hero icon="icon-[tabler--trophy]" title="Performance Leaderboard"
+        subtitle="গড় নম্বরের (Accuracy) ভিত্তিতে সেরা পারফর্মাররা।">
+        <x-slot:actions>
+            @if ($myIndex !== false)
+                <div class="rounded-2xl bg-volt-400 px-5 py-3 text-right text-snow">
+                    <p class="text-[11px] font-bold tracking-wider uppercase opacity-70">Your Rank</p>
+                    <p class="font-display text-2xl font-extrabold">#{{ $myIndex + 1 }}</p>
+                </div>
+            @endif
+        </x-slot:actions>
+    </x-page-hero>
 
-        .leaderboard-card {
-            border: none;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            background: #fff;
-        }
-
-        .table thead th {
-            background-color: #f8f9fa;
-            color: var(--quiz-primary);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            padding: 20px;
-            border: none;
-        }
-
-        .rank-badge {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            margin: auto;
-        }
-
-        .rank-1 {
-            background: #FFD700;
-            color: #fff;
-            box-shadow: 0 3px 10px rgba(255, 215, 0, 0.5);
-        }
-
-        .rank-2 {
-            background: #C0C0C0;
-            color: #fff;
-            box-shadow: 0 3px 10px rgba(192, 192, 192, 0.5);
-        }
-
-        .rank-3 {
-            background: #CD7F32;
-            color: #fff;
-            box-shadow: 0 3px 10px rgba(205, 127, 50, 0.5);
-        }
-
-        .user-box {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .avatar {
-            width: 40px;
-            height: 40px;
-            background: var(--quiz-gradient);
-            color: #fff;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-
-        .avg-progress {
-            height: 8px;
-            border-radius: 10px;
-            background: #eee;
-            width: 100px;
-            margin: auto;
-        }
-
-        .active-user {
-            background-color: rgba(78, 84, 200, 0.05) !important;
-        }
-
-        .accuracy-text {
-            font-weight: 700;
-            color: var(--quiz-primary);
-        }
-    </style>
-
-    <div class="container py-4">
-        <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h2 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow me-2"></i> Performance Leaderboard</h2>
-                <p class="mb-0 opacity-75">গড় নম্বরের (Accuracy) ভিত্তিতে সেরা পারফর্মাররা।</p>
-            </div>
-            <a href="{{ route('home') }}" class="btn btn-light fw-bold rounded-pill px-4">
-                <i class="bi bi-house me-1"></i> Home
-            </a>
+    @if ($podium->isNotEmpty())
+        {{-- Podium --}}
+        <div class="mb-8 flex items-end justify-center gap-3 sm:gap-5">
+            @foreach ($podiumOrder as $rank => $row)
+                @php [$height, $gradient, $icon, $iconTone] = $podiumStyle[$rank]; @endphp
+                <div class="flex w-28 animate-rise flex-col items-center sm:w-40" style="animation-delay: {{ (2 - $rank) * 120 }}ms">
+                    <span class="{{ $icon }} mb-1 size-7 {{ $iconTone }} {{ $rank === 0 ? 'animate-float' : '' }}"></span>
+                    <span class="relative mb-2 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 font-display text-xl font-bold text-snow shadow-lg ring-4 ring-black/60 sm:size-16">
+                        {{ strtoupper(mb_substr($row->user->name, 0, 1)) }}
+                    </span>
+                    <p class="w-full truncate text-center text-sm font-bold text-white">{{ $row->user->name }}</p>
+                    <p class="mb-2 text-xs font-semibold text-ink-400">{{ round($row->average_score, 1) }}%</p>
+                    <div class="flex w-full items-start justify-center rounded-t-2xl bg-gradient-to-b pt-3 font-display text-3xl font-extrabold shadow-inner {{ $height }} {{ $gradient }}">
+                        {{ $rank + 1 }}
+                    </div>
+                </div>
+            @endforeach
         </div>
+    @endif
 
-        <div class="card leaderboard-card">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 text-center">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th class="text-start">Participant</th>
-                            <th>Exams</th>
-                            <th>Average Score</th>
-                            <th>Correct/Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($leaderboard as $index => $row)
-                            @php $avg = round($row->average_score, 1); @endphp
-                            <tr class="{{ Auth::id() == $row->user_id ? 'active-user' : '' }}">
-                                <td class="text-center">
-                                    @if ($index == 0)
-                                        <div class="rank-badge rank-1"><i class="bi bi-trophy-fill"></i></div>
-                                    @elseif($index == 1)
-                                        <div class="rank-badge rank-2"><i class="bi bi-trophy-fill"></i></div>
-                                    @elseif($index == 2)
-                                        <div class="rank-badge rank-3"><i class="bi bi-trophy-fill"></i></div>
-                                    @else
-                                        <span class="fw-bold text-muted">#{{ $index + 1 }}</span>
-                                    @endif
-                                </td>
-                                <td class="text-start">
-                                    <div class="user-box">
-                                        <div class="avatar">{{ strtoupper(substr($row->user->name, 0, 1)) }}</div>
-                                        <div>
-                                            <div class="fw-bold text-dark">{{ $row->user->name }}</div>
-                                            @if (Auth::id() == $row->user_id)
-                                                <span class="badge bg-primary" style="font-size: 9px;">YOU</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark border fw-semibold">
-                                        {{ $row->total_quizzes }} <small>Exams</small>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="accuracy-text mb-1">{{ $avg }}%</div>
-                                    <div class="progress avg-progress">
-                                        <div class="progress-bar bg-primary" style="width: {{ $avg }}%"></div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="text-success fw-bold">{{ $row->total_correct }}</span>
-                                    <small class="text-muted">/ {{ $row->total_attempted }}</small>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="card overflow-hidden">
+        <ul class="divide-y divide-white/5">
+            @forelse ($leaderboard as $index => $row)
+                @php
+                    $avg = round($row->average_score, 1);
+                    $isMe = Auth::id() == $row->user_id;
+                @endphp
+                <li @class([
+                    'flex items-center gap-3 px-4 py-3.5 transition sm:gap-4 sm:px-6',
+                    'bg-volt-500/10' => $isMe,
+                    'hover:bg-white/5' => !$isMe,
+                ])>
+                    <span @class([
+                        'grid size-9 shrink-0 place-items-center rounded-xl font-display text-sm font-bold',
+                        'bg-volt-400 text-snow' => $index === 0,
+                        'bg-white/10 text-white' => $index === 1,
+                        'bg-amber-500/20 text-amber-300' => $index === 2,
+                        'bg-white/5 text-ink-400' => $index > 2,
+                    ])>{{ $index + 1 }}</span>
+
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 font-display font-bold text-white">
+                        {{ strtoupper(mb_substr($row->user->name, 0, 1)) }}
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <p class="flex items-center gap-2 truncate font-semibold text-white">
+                            {{ $row->user->name }}
+                            @if ($isMe)
+                                <span class="badge bg-white/10 px-2 py-0.5 text-[10px] text-volt-400">YOU</span>
+                            @endif
+                        </p>
+                        <p class="text-xs text-ink-400">
+                            {{ $row->total_quizzes }} exams ·
+                            <span class="font-semibold text-emerald-400">{{ $row->total_correct }}</span>/{{ $row->total_attempted }} correct
+                        </p>
+                    </div>
+
+                    <div class="w-24 shrink-0 text-right sm:w-40">
+                        <p class="font-display text-lg font-bold text-white">{{ $avg }}%</p>
+                        <div class="mt-1 hidden h-1.5 overflow-hidden rounded-full bg-white/10 sm:block">
+                            <div class="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600" style="width: {{ $avg }}%"></div>
+                        </div>
+                    </div>
+                </li>
+            @empty
+                <li class="py-16 text-center text-ink-400">এখনো কেউ পরীক্ষা দেয়নি।</li>
+            @endforelse
+        </ul>
     </div>
 @endsection

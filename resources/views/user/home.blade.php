@@ -1,115 +1,94 @@
 @extends('layouts.app')
 
+@section('title', 'Home')
+
 @section('content')
-    <style>
-        :root {
-            --quiz-primary: #4e54c8;
-            --quiz-secondary: #8f94fb;
-        }
+    {{-- Hero --}}
+    <section class="relative mb-6 animate-rise overflow-hidden rounded-[2rem] glass-panel p-7 text-white sm:p-10">
+        <div class="absolute inset-0 bg-grid [mask-image:linear-gradient(to_left,black,transparent_70%)]"></div>
+        <div class="absolute -top-28 -right-16 size-96 rounded-full bg-brand-600/50 blur-3xl"></div>
+        <div class="absolute -bottom-32 left-10 size-72 rounded-full bg-volt-400/15 blur-3xl"></div>
 
-        .welcome-banner {
-            background: linear-gradient(45deg, var(--quiz-primary), var(--quiz-secondary));
-            color: white;
-            border-radius: 20px;
-            padding: 40px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(78, 84, 200, 0.2);
-        }
+        <div class="relative grid items-center gap-8 lg:grid-cols-[1fr_auto]">
+            <div>
+                <span class="badge mb-4 bg-white/10 text-volt-300 ring-1 ring-white/15">
+                    <span class="icon-[tabler--sparkles] size-3.5"></span> {{ now()->format('l, d M') }}
+                </span>
+                <h1 class="font-display text-3xl leading-tight font-extrabold tracking-tight sm:text-5xl">
+                    স্বাগতম, <span class="text-volt-400">{{ Auth::user()->name }}</span>! 👋
+                </h1>
+                <p class="mt-3 max-w-lg text-ink-300 sm:text-lg">আজকের কুইজ প্রতিযোগিতার জন্য আপনি কি প্রস্তুত?</p>
+                <div class="mt-7 flex flex-wrap gap-3">
+                    <a href="{{ route('user.quiz.index') }}" class="btn btn-volt btn-lg">
+                        <span class="icon-[tabler--player-play-filled] size-5"></span> কুইজ শুরু করুন
+                    </a>
+                    <a href="{{ route('user.quiz.leaderboard') }}" class="btn btn-glass btn-lg">
+                        <span class="icon-[tabler--trophy] size-5"></span> Leaderboard
+                    </a>
+                </div>
+            </div>
 
-        .stat-card {
-            border: none;
-            border-radius: 15px;
-            transition: transform 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .icon-box {
-            width: 50px;
-            height: 50px;
-            background: rgba(78, 84, 200, 0.1);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--quiz-primary);
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-
-        .btn-start-quiz {
-            background: #fff;
-            color: var(--quiz-primary);
-            font-weight: 600;
-            border-radius: 10px;
-            padding: 10px 25px;
-            border: none;
-            transition: 0.3s;
-        }
-
-        .btn-start-quiz:hover {
-            background: #f8f9fa;
-            transform: scale(1.05);
-            color: var(--quiz-primary);
-        }
-    </style>
-
-    <div class="container py-4">
-        <div class="row justify-content-center">
-            <div class="col-md-11">
-
-                {{-- Success Message --}}
-                @if (session('status'))
-                    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert"
-                        style="border-radius: 10px;">
-                        <i class="bi bi-check-circle-fill me-2"></i> {{ session('status') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                {{-- Welcome Hero Section --}}
-                <div class="welcome-banner d-flex align-items-center justify-content-between flex-wrap">
-                    <div>
-                        <h1 class="fw-bold mb-2">স্বাগতম, {{ Auth::user()->name }}! 👋</h1>
-                        <p class="lead mb-4 opacity-75">আজকের কুইজ প্রতিযোগিতার জন্য আপনি কি প্রস্তুত?</p>
-                        <a href="/user/quizzes" class="btn btn-start-quiz">কুইজ শুরু করুন</a>
-                    </div>
-                    <div class="d-none d-lg-block">
-                        {{-- আপনি এখানে একটি ইলাস্ট্রেশন ইমেজ দিতে পারেন --}}
-                        <img src="https://cdn-icons-png.flaticon.com/512/5692/5692030.png" alt="Quiz Icon"
-                            style="width: 150px; filter: brightness(0) invert(1);">
+            {{-- Rank medallion --}}
+            <div class="hidden animate-float lg:block">
+                <div class="relative grid size-52 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-800 shadow-2xl shadow-brand-900/50 ring-8 ring-white/5">
+                    <div class="absolute inset-3 rounded-full border-2 border-dashed border-white/20"></div>
+                    <div class="text-center">
+                        <p class="text-xs font-bold tracking-[0.25em] text-brand-200 uppercase">Your Rank</p>
+                        <p class="font-display text-6xl font-extrabold">{{ $ranking ? '#' . $ranking : '—' }}</p>
                     </div>
                 </div>
-
-                {{-- Stats / Info Row --}}
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="card stat-card p-4">
-                            <div class="icon-box">🏆</div>
-                            <h5 class="text-muted small text-uppercase fw-bold">মোট স্কোর</h5>
-                            <h3 class="fw-bold">{{ $totalMarks }}</h3>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card stat-card p-4">
-                            <div class="icon-box">📝</div>
-                            <h5 class="text-muted small text-uppercase fw-bold">সম্পন্ন কুইজ</h5>
-                            <h3 class="fw-bold">{{ $quiz_attempted }} টি</h3>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card stat-card p-4">
-                            <div class="icon-box">⚡</div>
-                            <h5 class="text-muted small text-uppercase fw-bold">র‍্যাঙ্কিং</h5>
-                            <h3 class="fw-bold">#{{ $ranking }}</h3>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
+    </section>
+
+    {{-- Stats --}}
+    @php
+        $stats = [
+            ['মোট স্কোর', $totalMarks, 'Points earned', 'icon-[tabler--star-filled]', 'bg-amber-400 text-amber-950'],
+            ['সম্পন্ন কুইজ', $quiz_attempted . ' টি', 'Exams completed', 'icon-[tabler--checklist]', 'bg-volt-400 text-snow'],
+            ['র‍্যাঙ্কিং', $ranking ? '#' . $ranking : '—', 'By accuracy', 'icon-[tabler--trophy-filled]', 'bg-brand-500 text-snow'],
+        ];
+    @endphp
+    <div class="grid gap-4 sm:grid-cols-3">
+        @foreach ($stats as $i => [$label, $value, $hint, $icon, $tone])
+            <div class="card group animate-rise p-6 transition hover:-translate-y-1" style="animation-delay: {{ ($i + 1) * 90 }}ms">
+                <div class="flex items-center gap-4">
+                    <span class="grid size-14 shrink-0 place-items-center rounded-2xl {{ $tone }} shadow-lg transition group-hover:rotate-6">
+                        <span class="{{ $icon }} size-7"></span>
+                    </span>
+                    <div>
+                        <p class="text-sm font-semibold text-ink-400">{{ $label }}</p>
+                        <p class="font-display text-3xl font-extrabold tracking-tight text-white">{{ $value }}</p>
+                        <p class="text-xs text-ink-400">{{ $hint }}</p>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    {{-- Shortcuts --}}
+    <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <a href="{{ route('user.my.quiz') }}"
+            class="card group flex items-center gap-4 p-6 transition hover:-translate-y-1 hover:ring-brand-500/25">
+            <span class="grid size-12 place-items-center rounded-2xl bg-brand-500/10 text-brand-400">
+                <span class="icon-[tabler--history] size-6"></span>
+            </span>
+            <div class="flex-1">
+                <p class="font-display text-lg font-bold text-white">My Exams</p>
+                <p class="text-sm text-ink-400">আগের পরীক্ষাগুলোর ফলাফল দেখুন</p>
+            </div>
+            <span class="icon-[tabler--arrow-up-right] size-6 text-ink-300 transition group-hover:text-brand-400"></span>
+        </a>
+        <a href="{{ route('user.profile') }}"
+            class="card group flex items-center gap-4 p-6 transition hover:-translate-y-1 hover:ring-brand-500/25">
+            <span class="grid size-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-400">
+                <span class="icon-[tabler--user-circle] size-6"></span>
+            </span>
+            <div class="flex-1">
+                <p class="font-display text-lg font-bold text-white">Profile</p>
+                <p class="text-sm text-ink-400">আপনার তথ্য ও পাসওয়ার্ড পরিবর্তন করুন</p>
+            </div>
+            <span class="icon-[tabler--arrow-up-right] size-6 text-ink-300 transition group-hover:text-brand-400"></span>
+        </a>
     </div>
 @endsection
