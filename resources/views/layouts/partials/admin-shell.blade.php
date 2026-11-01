@@ -12,6 +12,9 @@
             ['Participants', route('participant.index'), 'admin/participants*', 'icon-[tabler--users-group]'],
             ['My Profile', route('admin.profile'), 'admin/profile*', 'icon-[tabler--user-circle]'],
         ],
+        'System' => [
+            ['Settings', route('admin.settings'), 'admin/settings*', 'icon-[tabler--settings]'],
+        ],
     ];
     $user = Auth::user();
 @endphp

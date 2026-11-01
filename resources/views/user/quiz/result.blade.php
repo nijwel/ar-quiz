@@ -34,7 +34,10 @@
             </div>
 
             <div class="text-center md:text-left">
-                <p class="font-display text-lg font-bold {{ $verdictTone }}">{{ $verdict }}</p>
+                <div class="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                    <p class="font-display text-lg font-bold {{ $verdictTone }}">{{ $verdict }}</p>
+                    <span class="badge {{ $quiz->difficulty->badgeClass() }}"><span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }}</span>
+                </div>
                 <h1 class="mt-1 font-display text-2xl font-bold sm:text-3xl">{{ $quiz->title }}</h1>
                 <p class="mt-1 text-sm text-ink-400">আপনার পারফরম্যান্সের বিস্তারিত নিচে দেখুন।</p>
 
@@ -54,7 +57,12 @@
                 </div>
 
                 <div class="mt-6 flex flex-wrap justify-center gap-2 md:justify-start">
-                    <a href="{{ route('user.quiz.index') }}" class="btn btn-volt">
+                    @if ($canRetake)
+                        <a href="{{ route('user.quiz.show', $quiz->slug) }}" class="btn btn-volt">
+                            <span class="icon-[tabler--reload] size-4"></span> Retake
+                        </a>
+                    @endif
+                    <a href="{{ route('user.quiz.index') }}" class="btn {{ $canRetake ? 'btn-glass' : 'btn-volt' }}">
                         <span class="icon-[tabler--file-pencil] size-4"></span> All Exams
                     </a>
                     <a href="{{ route('user.quiz.leaderboard') }}" class="btn btn-glass">
@@ -64,6 +72,20 @@
             </div>
         </div>
     </section>
+
+    @if ($attemptsTaken > 1)
+        <div class="mb-8 flex items-center gap-2 overflow-x-auto pb-1">
+            <span class="mr-1 flex shrink-0 items-center gap-1 text-xs font-bold tracking-wider text-ink-400 uppercase">
+                <span class="icon-[tabler--repeat] size-4"></span> Attempts
+            </span>
+            @foreach (range(1, $attemptsTaken) as $number)
+                <a href="{{ route('user.quiz.result', [$quiz->slug, 'attempt' => $number]) }}"
+                    class="badge shrink-0 px-4 py-2 text-sm transition {{ $number === $attempt ? 'bg-brand-600 text-snow shadow-lg shadow-brand-600/30' : 'bg-white/5 text-ink-300 ring-1 ring-white/10 hover:text-white' }}">
+                    #{{ $number }}{{ $number === $attemptsTaken ? ' · Latest' : '' }}
+                </a>
+            @endforeach
+        </div>
+    @endif
 
     <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold text-white">
         <span class="icon-[tabler--list-check] size-6 text-brand-400"></span> Answer Review

@@ -5,7 +5,7 @@
 @section('content')
     @php
         $questionCount = $quiz->questions->count();
-        $totalSeconds = $questionCount * 45;
+        $totalSeconds = $examSeconds;
     @endphp
 
     {{-- Start screen --}}
@@ -18,7 +18,13 @@
                 <span class="mx-auto mb-6 grid size-20 animate-float place-items-center rounded-3xl bg-volt-400 text-snow shadow-xl shadow-volt-400/20">
                     <span class="icon-[tabler--alarm] size-10"></span>
                 </span>
-                <span class="badge mb-3 bg-white/10 text-volt-300 ring-1 ring-white/15">{{ $quiz->category?->name }}</span>
+                <div class="mb-3 flex flex-wrap justify-center gap-2">
+                    <span class="badge bg-white/10 text-volt-300 ring-1 ring-white/15">{{ $quiz->category?->name }}</span>
+                    <span class="badge {{ $quiz->difficulty->badgeClass() }}"><span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }}</span>
+                    @if ($maxAttempts > 1)
+                        <span class="badge bg-white/10 text-ink-200 ring-1 ring-white/15"><span class="icon-[tabler--repeat] size-3.5"></span> Attempt {{ $attempt }}/{{ $maxAttempts }}</span>
+                    @endif
+                </div>
                 <h1 class="font-display text-3xl font-extrabold tracking-tight">{{ $quiz->title }}</h1>
                 @if ($quiz->description)
                     <p class="mt-2 text-sm text-ink-300">{{ $quiz->description }}</p>
@@ -38,7 +44,14 @@
                 </div>
 
                 <ul class="mb-8 space-y-2 text-left text-sm text-ink-300">
-                    <li class="flex gap-2"><span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span> প্রতিটি প্রশ্নের জন্য ৪৫ সেকেন্ড সময়।</li>
+                    <li class="flex gap-2">
+                        <span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span>
+                        @if ($quiz->duration_minutes)
+                            পুরো পরীক্ষাটি {{ $quiz->duration_minutes }} মিনিটের মধ্যে শেষ করতে হবে।
+                        @else
+                            প্রতিটি প্রশ্নের জন্য {{ $secondsPerQuestion }} সেকেন্ড সময়।
+                        @endif
+                    </li>
                     <li class="flex gap-2"><span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span> সময় শেষ হলে উত্তর অটোমেটিক জমা হবে।</li>
                     <li class="flex gap-2"><span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span> একবার জমা দিলে আর পরিবর্তন করা যাবে না।</li>
                 </ul>
@@ -149,7 +162,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const totalQuestions = {{ $questionCount }};
             const totalTimeInSeconds = {{ $totalSeconds }};
-            const storageKey = 'quiz_timer_{{ $quiz->id }}';
+            const storageKey = 'quiz_timer_{{ $quiz->id }}_{{ $attempt }}';
 
             const startBtn = document.getElementById('startBtn');
             const startScreen = document.getElementById('start-screen');

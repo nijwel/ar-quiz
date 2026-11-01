@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Difficulty;
+use App\Http\Requests\QuizRequest;
 use App\Models\Category;
 use App\Models\Quiz;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -12,71 +15,44 @@ class QuizController extends Controller {
     /**
      * Display a listing of the resource.
      */
-    public function index() {
-        $quizzes = Quiz::latest()
-            ->when( request()->category, function ( $quiz, $category ) {
-                $quiz->where( 'category_id', $category );
-            } )
-            ->with( 'questions', 'category' )
+    public function index( Request $request ) {
+        $difficulty = Difficulty::tryFrom( (string) $request->query( 'difficulty' ) );
+
+        $quizzes = Quiz::query()
+            ->with( 'category:id,name' )
             ->withCount( 'questions' )
+            ->when( $request->query( 'category' ), fn( $query, $categoryId ) => $query->where( 'category_id', $categoryId ) )
+            ->when( $difficulty, fn( $query ) => $query->where( 'difficulty', $difficulty ) )
+            ->latest()
             ->paginate( 10 );
-        $categories = Category::where( 'status', true )->get();
-        return view( 'admin.quiz.index', compact( 'quizzes', 'categories' ) );
+
+        return view( 'admin.quiz.index', [
+            'quizzes'    => $quizzes,
+            'categories' => $this->activeCategories(),
+        ] );
     }
 
     /**
      * Show the form for creating a new resource.
      */
     public function create() {
-
-        $categories = Category::where( 'status', true )->get();
-        return view( 'admin.quiz.create', compact( 'categories' ) );
+        return view( 'admin.quiz.create', [
+            'categories'         => $this->activeCategories(),
+            'secondsPerQuestion' => Setting::secondsPerQuestion(),
+        ] );
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store( Request $request ) {
-        $request->validate( [
-            'title'               => 'required|string|unique:quizzes,title',
-            'description'         => 'nullable|string',
-            'start_exam_at'       => 'nullable|date',
-            'end_exam_at'         => 'nullable|date|after:start_exam_at',
-            'category_id'         => 'required|exists:categories,id',
-            'questions'           => 'required|array',
-            'questions.*.text'    => 'required|string',
-            'questions.*.answers' => 'required|array|min:2',
-            'questions.*.correct' => 'required',
-        ] );
+    public function store( QuizRequest $request ) {
+        DB::transaction( function () use ( $request ) {
+            $quiz = Quiz::create( $request->quizData() + ['slug' => Str::slug( $request->title )] );
 
-        try {
-            $quiz = Quiz::create( [
-                'category_id'   => $request->category_id,
-                'title'         => $request->title,
-                'slug'          => Str::slug( $request->title ),
-                'description'   => $request->description,
-                'start_exam_at' => $request->start_exam_at,
-                'end_exam_at'   => $request->end_exam_at,
-            ] );
+            $this->saveQuestions( $quiz, $request->input( 'questions' ) );
+        } );
 
-            foreach ( $request->questions as $questionData ) {
-                $question = $quiz->questions()->create( [
-                    'question' => $questionData['text'],
-                ] );
-
-                foreach ( $questionData['answers'] as $index => $answerText ) {
-                    $isCorrect = (int) ( $index == $questionData['correct'] );
-                    $question->answers()->create( [
-                        'answer'     => $answerText,
-                        'is_correct' => $isCorrect,
-                    ] );
-                }
-            }
-
-            return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz created successfully.' );
-        } catch ( \Exception $e ) {
-            return redirect()->back()->withErrors( ['error' => 'Failed to create quiz: ' . $e->getMessage()] );
-        }
+        return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz created successfully.' );
     }
 
     /**
@@ -90,62 +66,33 @@ class QuizController extends Controller {
      * Show the form for editing the specified resource.
      */
     public function edit( string $id ) {
-        $quiz       = Quiz::with( 'questions:id,quiz_id,question', 'questions.answers:id,question_id,answer,is_correct' )->findOrFail( $id );
-        $categories = Category::where( 'status', true )->get();
-        return view( 'admin.quiz.edit', compact( 'quiz', 'categories' ) );
+        $quiz = Quiz::with( [
+            'questions:id,quiz_id,question',
+            'questions.answers:id,question_id,answer,is_correct',
+        ] )->findOrFail( $id );
+
+        return view( 'admin.quiz.edit', [
+            'quiz'               => $quiz,
+            'categories'         => $this->activeCategories(),
+            'secondsPerQuestion' => Setting::secondsPerQuestion(),
+        ] );
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update( Request $request, $id ) {
-        $request->validate( [
-            'category_id'         => 'required|exists:categories,id',
-            'title'               => 'required|string|unique:quizzes,title,' . $id,
-            'description'         => 'nullable|string',
-            'start_exam_at'       => 'nullable|date',
-            'end_exam_at'         => 'nullable|date|after:start_exam_at',
-            'questions'           => 'required|array',
-            'questions.*.text'    => 'required|string',
-            'questions.*.answers' => 'required|array|min:2',
-            'questions.*.correct' => 'required',
-        ] );
+    public function update( QuizRequest $request, string $id ) {
+        $quiz = Quiz::findOrFail( $id );
 
-        try {
-            $quiz = Quiz::findOrFail( $id );
+        DB::transaction( function () use ( $quiz, $request ) {
+            $quiz->update( $request->quizData() + ['slug' => Str::slug( $request->title )] );
 
-            $quiz->update( [
-                'category_id'   => $request->category_id,
-                'title'         => $request->title,
-                'slug'          => Str::slug( $request->title ),
-                'description'   => $request->description,
-                'start_exam_at' => $request->start_exam_at,
-                'end_exam_at'   => $request->end_exam_at,
-            ] );
+            // Questions are replaced as a whole; answers are removed by the FK cascade
+            $quiz->questions()->delete();
+            $this->saveQuestions( $quiz, $request->input( 'questions' ) );
+        } );
 
-            foreach ( $quiz->questions as $question ) {
-                $question->answers()->delete();
-                $question->delete();
-            }
-
-            foreach ( $request->questions as $questionData ) {
-                $question = $quiz->questions()->create( [
-                    'question' => $questionData['text'],
-                ] );
-
-                foreach ( $questionData['answers'] as $index => $answerText ) {
-                    $isCorrect = (int) ( $index == $questionData['correct'] );
-                    $question->answers()->create( [
-                        'answer'     => $answerText,
-                        'is_correct' => $isCorrect,
-                    ] );
-                }
-            }
-
-            return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz updated successfully.' );
-        } catch ( \Exception $e ) {
-            return redirect()->back()->withErrors( ['error' => 'Failed to update quiz: ' . $e->getMessage()] );
-        }
+        return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz updated successfully.' );
     }
 
     /**
@@ -313,12 +260,19 @@ class QuizController extends Controller {
             // Resolve or create category
             $categoryId = $this->resolveCategory( $quizData['quiz']['category'] );
 
+            $difficulty = Difficulty::tryFrom( strtolower( trim( $quizData['quiz']['difficulty'] ?? 'standard' ) ) );
+            if ( !$difficulty ) {
+                throw new \Exception( 'Invalid difficulty. Use one of: ' . implode( ', ', Difficulty::values() ) . '.' );
+            }
+
             // Create quiz
             $quiz = Quiz::create( [
                 'category_id'   => $categoryId,
                 'title'         => $quizData['quiz']['title'],
                 'slug'          => Str::slug( $quizData['quiz']['title'] ),
                 'description'   => $quizData['quiz']['description'] ?? null,
+                'difficulty'    => $difficulty,
+                'duration_minutes' => ( (int) ( $quizData['quiz']['duration_minutes'] ?? 0 ) ) ?: null,
                 'start_exam_at' => $quizData['quiz']['start_exam_at'] ?? null,
                 'end_exam_at'   => $quizData['quiz']['end_exam_at'] ?? null,
             ] );
@@ -391,4 +345,23 @@ class QuizController extends Controller {
         return $newCategory->id;
     }
 
+    /**
+     * Create the questions of a quiz, inserting each question's answers in one query.
+     */
+    private function saveQuestions( Quiz $quiz, array $questions ): void {
+        foreach ( $questions as $questionData ) {
+            $question = $quiz->questions()->create( ['question' => $questionData['text']] );
+
+            $answers = collect( $questionData['answers'] )->map( fn( $text, $index ) => [
+                'answer'     => $text,
+                'is_correct' => (int) $index === (int) $questionData['correct'],
+            ] );
+
+            $question->answers()->createMany( $answers->values()->all() );
+        }
+    }
+
+    private function activeCategories() {
+        return Category::where( 'status', true )->get( ['id', 'name'] );
+    }
 }

@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@use('App\Enums\Difficulty')
 
 @section('title', 'Quizzes')
 
@@ -22,12 +23,27 @@
                 <span class="icon-[tabler--filter] size-4"></span> Filter
             </span>
             @php $current = request('category'); @endphp
-            <a href="{{ route('quiz.index') }}"
+            <a href="{{ route('quiz.index', request()->only('difficulty')) }}"
                 class="badge shrink-0 px-3.5 py-2 text-sm transition {{ !$current ? 'bg-brand-600 text-snow shadow-lg shadow-brand-600/30' : 'bg-white/5 text-ink-300 ring-1 ring-white/10 hover:ring-white/20' }}">All</a>
             @foreach ($categories as $category)
-                <a href="{{ route('quiz.index', ['category' => $category->id]) }}"
+                <a href="{{ route('quiz.index', ['category' => $category->id] + request()->only('difficulty')) }}"
                     class="badge shrink-0 px-3.5 py-2 text-sm transition {{ $current == $category->id ? 'bg-brand-600 text-snow shadow-lg shadow-brand-600/30' : 'bg-white/5 text-ink-300 ring-1 ring-white/10 hover:ring-white/20' }}">
                     {{ $category->name }}
+                </a>
+            @endforeach
+        </div>
+
+        <div class="-mt-2 mb-5 flex items-center gap-2 overflow-x-auto pb-1">
+            <span class="mr-1 flex shrink-0 items-center gap-1 text-xs font-bold tracking-wider text-ink-400 uppercase">
+                <span class="icon-[tabler--chart-bar] size-4"></span> Level
+            </span>
+            @php $currentLevel = Difficulty::tryFrom((string) request('difficulty')); @endphp
+            <a href="{{ route('quiz.index', request()->only('category')) }}"
+                class="badge shrink-0 px-3.5 py-2 text-sm transition {{ !$currentLevel ? 'bg-brand-600 text-snow shadow-lg shadow-brand-600/30' : 'bg-white/5 text-ink-300 ring-1 ring-white/10 hover:ring-white/20' }}">All</a>
+            @foreach (Difficulty::cases() as $level)
+                <a href="{{ route('quiz.index', ['difficulty' => $level->value] + request()->only('category')) }}"
+                    class="badge shrink-0 px-3.5 py-2 text-sm transition {{ $currentLevel === $level ? $level->solidClass() : $level->badgeClass() . ' hover:opacity-80' }}">
+                    <span class="{{ $level->icon() }} size-4"></span> {{ $level->label() }}
                 </a>
             @endforeach
         </div>
@@ -38,7 +54,7 @@
                     <thead>
                         <tr>
                             <th>Quiz</th>
-                            <th>Category</th>
+                            <th>Category / Level</th>
                             <th>Schedule</th>
                             <th>Status</th>
                             <th class="text-right">Actions</th>
@@ -78,7 +94,12 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-brand-500/10 text-brand-300">{{ $quiz->category?->name ?? '—' }}</span>
+                                    <div class="flex flex-col items-start gap-1.5">
+                                        <span class="badge bg-brand-500/10 text-brand-300">{{ $quiz->category?->name ?? '—' }}</span>
+                                        <span class="badge {{ $quiz->difficulty->badgeClass() }}">
+                                            <span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="text-xs whitespace-nowrap text-ink-300">
                                     @if ($start || $end)
@@ -96,6 +117,11 @@
                                 </td>
                                 <td>
                                     <span class="badge {{ $status[1] }}"><span class="size-1.5 rounded-full {{ $status[2] }}"></span> {{ $status[0] }}</span>
+                                    <p class="mt-1.5 flex items-center gap-1 text-xs whitespace-nowrap text-ink-400"
+                                        title="{{ $quiz->duration_minutes ? 'Fixed exam duration' : 'Questions × seconds per question (Settings)' }}">
+                                        <span class="icon-[tabler--hourglass] size-3.5"></span>
+                                        {{ $quiz->duration_minutes ? $quiz->duration_minutes . ' min' : 'Auto · ' . ceil($quiz->examSeconds($quiz->questions_count) / 60) . ' min' }}
+                                    </p>
                                 </td>
                                 <td>
                                     <div class="flex justify-end gap-1.5">
@@ -186,6 +212,8 @@
   "quiz": {
     "title": "Laravel Advanced Quiz",
     "category": "Programming",
+    "difficulty": "easy | standard | hard | expert",
+    "duration_minutes": 30,
     "description": "...",
     "questions": []
   }

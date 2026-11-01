@@ -1,8 +1,12 @@
 @props(['quiz', 'result', 'delay' => 0])
 
 @php
-    $start = $quiz->start_exam_at ? \Carbon\Carbon::parse($quiz->start_exam_at) : null;
-    $end = $quiz->end_exam_at ? \Carbon\Carbon::parse($quiz->end_exam_at) : null;
+    $start = $quiz->start_exam_at;
+    $end = $quiz->end_exam_at;
+    $isOpen = !($start && $start->isFuture()) && !($end && $end->isPast());
+    $canRetake = $result['attempted'] && $result['attempts_left'] > 0 && $isOpen;
+    $minutes = intdiv($result['exam_seconds'], 60);
+    $seconds = $result['exam_seconds'] % 60;
 
     if ($result['attempted']) {
         $status = ['Completed', 'bg-emerald-500/10 text-emerald-300', 'icon-[tabler--circle-check-filled]'];
@@ -28,6 +32,9 @@
         <span class="badge {{ $status[1] }}"><span class="{{ $status[2] }} size-3.5"></span> {{ $status[0] }}</span>
     </div>
 
+    <span class="badge mb-2 self-start {{ $quiz->difficulty->badgeClass() }}">
+        <span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }} · {{ $quiz->difficulty->banglaLabel() }}
+    </span>
     <h3 class="font-display text-lg leading-snug font-bold text-white transition group-hover:text-brand-300">{{ $quiz->title }}</h3>
     @if ($quiz->description)
         <p class="mt-1.5 line-clamp-2 text-sm text-ink-400">{{ $quiz->description }}</p>
@@ -35,7 +42,16 @@
 
     <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-medium text-ink-400">
         <span class="flex items-center gap-1"><span class="icon-[tabler--list-numbers] size-4 text-ink-400"></span> {{ $result['total_questions'] }} Questions</span>
-        <span class="flex items-center gap-1"><span class="icon-[tabler--hourglass] size-4 text-ink-400"></span> {{ ceil($result['total_questions'] * 45 / 60) }} min</span>
+        <span class="flex items-center gap-1">
+            <span class="icon-[tabler--hourglass] size-4 text-ink-400"></span>
+            {{ $minutes }} min{{ $seconds ? " {$seconds} sec" : '' }}
+        </span>
+        @if ($result['attempted'])
+            <span class="flex items-center gap-1">
+                <span class="icon-[tabler--repeat] size-4 text-ink-400"></span>
+                Attempt {{ $result['attempts'] }}/{{ $result['attempts'] + $result['attempts_left'] }}
+            </span>
+        @endif
         @if (!$result['attempted'] && $start)
             <span class="flex items-center gap-1"><span class="icon-[tabler--calendar-event] size-4 text-ink-400"></span> {{ $start->format('d M, h:i A') }}</span>
         @endif
@@ -57,9 +73,16 @@
                     <span class="font-bold text-white">{{ $result['marks'] }} Marks</span>
                 </div>
             </div>
-            <a href="{{ route('user.quiz.result', $quiz->slug) }}" class="btn btn-dark w-full">
-                <span class="icon-[tabler--report-analytics] size-4"></span> View Result
-            </a>
+            <div class="flex gap-2">
+                <a href="{{ route('user.quiz.result', $quiz->slug) }}" class="btn btn-dark flex-1">
+                    <span class="icon-[tabler--report-analytics] size-4"></span> Result
+                </a>
+                @if ($canRetake)
+                    <a href="{{ route('user.quiz.show', $quiz->slug) }}" class="btn btn-primary flex-1">
+                        <span class="icon-[tabler--reload] size-4"></span> Retake
+                    </a>
+                @endif
+            </div>
         @else
             <a href="{{ route('user.quiz.show', $quiz->slug) }}" class="btn btn-primary w-full">
                 Take Quiz <span class="icon-[tabler--arrow-right] size-4 transition group-hover:translate-x-1"></span>

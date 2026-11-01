@@ -24,25 +24,22 @@ class HomeController extends Controller {
      * @return \Illuminate\Contracts\Support\Renderable
      */
     public function index() {
-        $userStats = auth()->user()->userAnswers()
-            ->selectRaw( 'COUNT(CASE WHEN status = "correct" THEN 1 END) as total_correct,
-                     COUNT(question_id) as total_attempted,
-                     COUNT(DISTINCT quiz_id) as total_quizzes' )
-            ->first();
+        // Only each quiz's latest attempt counts, so retakes don't inflate the totals
+        $latestAttempts = UserAnswer::latestAttemptSummary( auth()->id() );
+        $totalMarks     = $latestAttempts->sum( 'correct' );
+        $quiz_attempted = $latestAttempts->count();
 
-        $totalMarks     = $userStats->total_correct ?? 0;
-        $quiz_attempted = $userStats->total_quizzes ?? 0;
-        $allUsersStats  = UserAnswer::selectRaw( 'user_id,
-            (COUNT(CASE WHEN status = "correct" THEN 1 END) * 100.0 / NULLIF(COUNT(question_id), 0)) as average_score' )
+        // Same ordering as the leaderboard page
+        $rankedUserIds = UserAnswer::query()
+            ->latestAttempt()
+            ->select( 'user_id' )
             ->groupBy( 'user_id' )
-            ->orderByDesc( 'average_score' )
-            ->get();
+            ->orderByRaw( "SUM(CASE WHEN status = 'correct' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) DESC" )
+            ->orderByRaw( 'COUNT(DISTINCT quiz_id) DESC' )
+            ->pluck( 'user_id' );
 
-        $ranking = $allUsersStats->search( function ( $item ) {
-            return $item->user_id === auth()->id();
-        } );
-
-        $ranking = ( $ranking !== false ) ? $ranking + 1 : 0;
+        $position = $rankedUserIds->search( auth()->id() );
+        $ranking  = $position === false ? 0 : $position + 1;
 
         return view( 'user.home', compact( 'totalMarks', 'quiz_attempted', 'ranking' ) );
     }

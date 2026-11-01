@@ -16,17 +16,7 @@
 
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         @forelse ($quizzes as $quiz)
-            @php
-                $correct = $quiz->userAnswers->where('status', 'correct')->count();
-                $result = [
-                    'attempted' => true,
-                    'right' => $correct,
-                    'wrong' => $quiz->userAnswers->count() - $correct,
-                    'total_questions' => $quiz->questions_count,
-                    'marks' => $correct,
-                ];
-            @endphp
-            <x-quiz-card :quiz="$quiz" :result="$result" :delay="min($loop->index, 8) * 60" />
+            <x-quiz-card :quiz="$quiz" :result="$quizResults[$quiz->id]" :delay="min($loop->index, 8) * 60" />
         @empty
             <div class="card col-span-full py-16 text-center">
                 <span class="icon-[tabler--clipboard-off] mx-auto mb-3 block size-12 text-ink-300"></span>

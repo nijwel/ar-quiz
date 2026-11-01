@@ -1,3 +1,5 @@
+@use('App\Enums\Difficulty')
+
 @php
     $quiz = $quiz ?? null;
     $toInput = fn($value) => $value ? \Carbon\Carbon::parse($value)->format('Y-m-d\TH:i') : '';
@@ -19,7 +21,7 @@
     }
 @endphp
 
-<form action="{{ $action }}" method="POST" x-data="quizBuilder(@js($initialQuestions))">
+<form action="{{ $action }}" method="POST" x-data="quizBuilder(@js($initialQuestions), {{ $secondsPerQuestion }}, @js(old('duration_minutes', $quiz?->duration_minutes)))">
     @csrf
     @if ($quiz)
         @method('PUT')
@@ -54,6 +56,24 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="sm:col-span-2" x-data="{ difficulty: '{{ old('difficulty', $quiz?->difficulty?->value ?? 'standard') }}' }">
+                        <span class="label">Difficulty Level</span>
+                        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            @foreach (Difficulty::cases() as $level)
+                                <label class="flex cursor-pointer flex-col items-center gap-1 rounded-2xl px-3 py-3 text-center transition"
+                                    :class="difficulty === '{{ $level->value }}' ? '{{ $level->solidClass() }}' : '{{ $level->badgeClass() }} opacity-70 hover:opacity-100'">
+                                    <input type="radio" name="difficulty" value="{{ $level->value }}" class="sr-only"
+                                        x-model="difficulty" required>
+                                    <span class="{{ $level->icon() }} size-6"></span>
+                                    <span class="text-sm font-bold">{{ $level->label() }}</span>
+                                    <span class="text-[11px] opacity-80">{{ $level->banglaLabel() }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('difficulty')
+                            <p class="field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
                     <div>
                         <label class="label" for="start_exam_at">Start Date & Time</label>
                         <input id="start_exam_at" type="datetime-local" name="start_exam_at"
@@ -67,6 +87,19 @@
                         @error('end_exam_at')
                             <p class="field-error">{{ $message }}</p>
                         @enderror
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="label" for="duration_minutes">Exam Duration <span class="font-normal text-ink-400">(minutes, optional)</span></label>
+                        <div class="relative">
+                            <span class="icon-[tabler--clock-hour-4] pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-400"></span>
+                            <input id="duration_minutes" type="number" name="duration_minutes" min="1" max="1440" x-model="duration"
+                                class="input pl-12 @error('duration_minutes') input-error @enderror"
+                                :placeholder="`ফাঁকা রাখলে: ${questions.length} প্রশ্ন × ${secondsPerQuestion} সেকেন্ড`">
+                        </div>
+                        @error('duration_minutes')
+                            <p class="field-error">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-1.5 text-xs text-ink-400">সময় দিলে পুরো পরীক্ষা ওই সময়ের মধ্যে শেষ করতে হবে।</p>
                     </div>
                 </div>
             </div>
@@ -137,8 +170,11 @@
                 </div>
                 <div class="space-y-3 p-6 text-sm">
                     <div class="flex justify-between">
-                        <span class="text-ink-400">Estimated time</span>
-                        <span class="font-semibold text-white" x-text="`${Math.ceil(questions.length * 45 / 60)} min`"></span>
+                        <span class="text-ink-400">Exam time</span>
+                        <span class="text-right font-semibold text-white">
+                            <span x-text="examTimeLabel()"></span>
+                            <span class="block text-[11px] font-normal text-ink-400" x-text="duration ? 'Fixed duration' : `${secondsPerQuestion}s × ${questions.length} questions`"></span>
+                        </span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-ink-400">Total options</span>
@@ -156,7 +192,7 @@
 
 @push('scripts')
     <script>
-        function quizBuilder(initial) {
+        function quizBuilder(initial, secondsPerQuestion, duration) {
             let uid = 0;
             const make = (q = {}) => ({
                 uid: ++uid,
@@ -166,7 +202,14 @@
             });
 
             return {
+                secondsPerQuestion,
+                duration: duration ?? '',
                 questions: initial.map(make),
+                examTimeLabel() {
+                    const total = this.duration ? this.duration * 60 : this.questions.length * this.secondsPerQuestion;
+                    const m = Math.floor(total / 60), s = total % 60;
+                    return s ? `${m} min ${s} sec` : `${m} min`;
+                },
                 addQuestion() {
                     this.questions.push(make());
                     this.$nextTick(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
