@@ -18,17 +18,31 @@
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         @forelse ($quizzes as $quiz)
             @php
-                $userAnswers = $quiz->userAnswers;
+                $latest = $latestAttempts[$quiz->id];
+                $reason = \App\Enums\SubmitReason::tryFrom((string) $latest->submit_reason);
                 $totalQ = $quiz->questions_count;
-                $attempted = $userAnswers->count();
-                $right = $userAnswers->where('status', 'correct')->count();
+                $attempted = (int) $latest->answered;
+                $right = (int) $latest->correct;
                 $wrong = $attempted - $right;
                 $percentage = $totalQ > 0 ? round(($right / $totalQ) * 100) : 0;
                 $ring = $percentage >= 70 ? 'text-emerald-500' : ($percentage >= 40 ? 'text-amber-500' : 'text-rose-500');
             @endphp
             <div class="card animate-rise p-6 transition hover:-translate-y-1">
                 <div class="mb-5 flex items-start justify-between gap-4">
-                    <h3 class="font-semibold text-white">{{ $quiz->title }}</h3>
+                    <div>
+                        <h3 class="font-semibold text-white">{{ $quiz->title }}</h3>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            <span class="badge bg-white/10 text-ink-300">Attempt {{ $latest->attempt }}</span>
+                            @if ($reason)
+                                <span class="badge {{ $reason->badgeClass() }}" title="{{ $reason->banglaLabel() }}">
+                                    @if ($reason->isViolation())
+                                        <span class="icon-[tabler--alert-triangle] size-3.5"></span>
+                                    @endif
+                                    {{ $reason->label() }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
                     {{-- Score ring --}}
                     <div class="relative size-16 shrink-0">
                         <svg viewBox="0 0 36 36" class="size-16 -rotate-90">

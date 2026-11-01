@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\User;
-use App\Models\UserAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -25,18 +25,12 @@ class HomeController extends Controller {
      */
     public function index() {
         // Only each quiz's latest attempt counts, so retakes don't inflate the totals
-        $latestAttempts = UserAnswer::latestAttemptSummary( auth()->id() );
+        $latestAttempts = QuizAttempt::latestSummary( auth()->id() );
         $totalMarks     = $latestAttempts->sum( 'correct' );
         $quiz_attempted = $latestAttempts->count();
 
         // Same ordering as the leaderboard page
-        $rankedUserIds = UserAnswer::query()
-            ->latestAttempt()
-            ->select( 'user_id' )
-            ->groupBy( 'user_id' )
-            ->orderByRaw( "SUM(CASE WHEN status = 'correct' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) DESC" )
-            ->orderByRaw( 'COUNT(DISTINCT quiz_id) DESC' )
-            ->pluck( 'user_id' );
+        $rankedUserIds = QuizAttempt::query()->leaderboard()->pluck( 'user_id' );
 
         $position = $rankedUserIds->search( auth()->id() );
         $ranking  = $position === false ? 0 : $position + 1;

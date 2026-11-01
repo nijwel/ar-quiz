@@ -27,6 +27,7 @@ Route::prefix( 'user' )->middleware( ['auth', 'user-access:user'] )->group( func
     route::prefix( 'quizzes' )->group( function () {
         Route::get( '/', [UserAnswerController::class, 'index'] )->name( 'user.quiz.index' );
         Route::get( '/{quiz}', [UserAnswerController::class, 'show'] )->name( 'user.quiz.show' );
+        Route::post( '/{quiz}/start', [UserAnswerController::class, 'start'] )->name( 'user.quiz.start' );
         Route::post( '/submit', [UserAnswerController::class, 'store'] )->name( 'user.quiz.submit' );
         Route::get( '/result/{quiz}', [UserAnswerController::class, 'result'] )->name( 'user.quiz.result' );
     } );
@@ -51,6 +52,9 @@ Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( fu
         Route::get( '/edit/{id}', [CategoryController::class, 'edit'] )->name( 'category.edit' );
         Route::put( '/update/{id}', [CategoryController::class, 'update'] )->name( 'category.update' );
         Route::delete( '/destroy/{id}', [CategoryController::class, 'destroy'] )->name( 'category.destroy' );
+        Route::patch( '/bulk-status', [CategoryController::class, 'bulkStatus'] )->name( 'category.bulk-status' );
+        Route::delete( '/bulk-destroy', [CategoryController::class, 'bulkDestroy'] )->name( 'category.bulk-destroy' );
+        Route::patch( '/{category}/status', [CategoryController::class, 'toggleStatus'] )->name( 'category.status' );
     } );
 
     route::prefix( 'quiz' )->group( function () {
@@ -60,7 +64,13 @@ Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( fu
         Route::get( '/edit/{id}', [QuizController::class, 'edit'] )->name( 'quiz.edit' );
         Route::put( '/update/{id}', [QuizController::class, 'update'] )->name( 'quiz.update' );
         Route::delete( '/destroy/{id}', [QuizController::class, 'destroy'] )->name( 'quiz.destroy' );
+        // Bulk actions share one form of row checkboxes, so both are POST (buttons pick the route via formaction)
+        Route::post( '/bulk/status', [QuizController::class, 'bulkStatus'] )->name( 'quiz.status.bulk' );
+        Route::post( '/bulk/destroy', [QuizController::class, 'bulkDestroy'] )->name( 'quiz.destroy.bulk' );
+        Route::patch( '/{quiz}/status', [QuizController::class, 'toggleStatus'] )->name( 'quiz.status' );
         Route::post( '/upload', [QuizController::class, 'upload'] )->name( 'quiz.upload' );
+        Route::get( '/export', [QuizController::class, 'export'] )->name( 'quiz.export' );
+        Route::get( '/export/{id}', [QuizController::class, 'exportOne'] )->name( 'quiz.export.single' );
     } );
 
     Route::get( '/settings', [SettingController::class, 'index'] )->name( 'admin.settings' );

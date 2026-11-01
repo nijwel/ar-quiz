@@ -52,7 +52,7 @@
                         <label class="label" for="category_id">Category</label>
                         <select id="category_id" name="category_id" class="input" required>
                             @foreach ($categories as $category)
-                                <option value="{{ $category->id }}" @selected(old('category_id', $quiz?->category_id) == $category->id)>{{ $category->name }}</option>
+                                <option value="{{ $category->id }}" @selected(old('category_id', $quiz?->category_id) == $category->id)>{{ $category->name }}{{ $category->status ? '' : ' (inactive)' }}</option>
                             @endforeach
                         </select>
                     </div>

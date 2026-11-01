@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\SubmitReason;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SubmitQuizRequest extends FormRequest {
     public function authorize(): bool {
@@ -15,6 +17,8 @@ class SubmitQuizRequest extends FormRequest {
             // answers[question_id] = answer_id; may be empty when time runs out
             'answers'   => ['nullable', 'array'],
             'answers.*' => ['integer'],
+            // Why the browser submitted: manual, time_up, or an anti-cheat event like tab_hidden
+            'reason'    => ['nullable', Rule::in( SubmitReason::clientValues() )],
         ];
     }
 }

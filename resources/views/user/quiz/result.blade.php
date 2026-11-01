@@ -4,7 +4,7 @@
 
 @section('content')
     @php
-        $total = $quiz->questions->count();
+        $total = $totalQuestions;
         $percent = $total ? round(($rightAnswers / $total) * 100) : 0;
         [$verdict, $verdictTone] = match (true) {
             $percent >= 80 => ['অসাধারণ! 🎉', 'text-volt-400'],
@@ -37,8 +37,21 @@
                 <div class="flex flex-wrap items-center justify-center gap-2 md:justify-start">
                     <p class="font-display text-lg font-bold {{ $verdictTone }}">{{ $verdict }}</p>
                     <span class="badge {{ $quiz->difficulty->badgeClass() }}"><span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }}</span>
+                    @if ($submitReason && $submitReason !== \App\Enums\SubmitReason::Manual)
+                        <span class="badge {{ $submitReason->badgeClass() }}" title="{{ $submitReason->banglaLabel() }}">
+                            <span class="{{ $submitReason->isViolation() ? 'icon-[tabler--alert-triangle]' : 'icon-[tabler--clock]' }} size-3.5"></span>
+                            {{ $submitReason->label() }}
+                        </span>
+                    @endif
                 </div>
                 <h1 class="mt-1 font-display text-2xl font-bold sm:text-3xl">{{ $quiz->title }}</h1>
+                @if ($submittedAt)
+                    <p class="mt-1 flex items-center justify-center gap-1.5 text-sm text-ink-300 md:justify-start">
+                        <span class="icon-[tabler--calendar-check] size-4"></span>
+                        {{ $submittedAt->format('d M Y, h:i A') }}
+                        <span class="text-ink-500">· {{ $submittedAt->diffForHumans() }}</span>
+                    </p>
+                @endif
                 <p class="mt-1 text-sm text-ink-400">আপনার পারফরম্যান্সের বিস্তারিত নিচে দেখুন।</p>
 
                 <div class="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
@@ -87,6 +100,17 @@
         </div>
     @endif
 
+    @if (!$showReview)
+        <div class="card flex items-center gap-4 p-6">
+            <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-ink-300">
+                <span class="icon-[tabler--eye-off] size-6"></span>
+            </span>
+            <div>
+                <p class="font-display text-lg font-bold text-white">Answer review is hidden</p>
+                <p class="text-sm text-ink-400">এই পরীক্ষার সঠিক উত্তরগুলো এখন দেখানো হচ্ছে না। শুধু আপনার স্কোর দেখা যাবে।</p>
+            </div>
+        </div>
+    @else
     <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold text-white">
         <span class="icon-[tabler--list-check] size-6 text-brand-400"></span> Answer Review
     </h2>
@@ -134,4 +158,5 @@
             </div>
         @endforeach
     </div>
+    @endif
 @endsection

@@ -52,6 +52,13 @@
                 Attempt {{ $result['attempts'] }}/{{ $result['attempts'] + $result['attempts_left'] }}
             </span>
         @endif
+        @if ($result['taken_at'])
+            <span class="flex w-full items-center gap-1">
+                <span class="icon-[tabler--calendar-check] size-4 text-ink-400"></span>
+                <span class="text-ink-200">{{ $result['taken_at']->format('d M Y, h:i A') }}</span>
+                <span class="text-ink-500">· {{ $result['taken_at']->diffForHumans() }}</span>
+            </span>
+        @endif
         @if (!$result['attempted'] && $start)
             <span class="flex items-center gap-1"><span class="icon-[tabler--calendar-event] size-4 text-ink-400"></span> {{ $start->format('d M, h:i A') }}</span>
         @endif

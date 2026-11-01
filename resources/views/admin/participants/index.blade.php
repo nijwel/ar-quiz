@@ -43,7 +43,7 @@
                             </td>
                             <td class="text-ink-400">{{ $participant->email }}</td>
                             <td class="text-center">
-                                <span class="font-display text-lg font-bold text-emerald-400">{{ $participant->quiz_results_count }}</span>
+                                <span class="font-display text-lg font-bold text-emerald-400">{{ (int) $participant->total_marks }}</span>
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-brand-500/10 text-brand-300">
