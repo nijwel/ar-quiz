@@ -1,47 +1,37 @@
 @extends('layouts.app')
 
+@section('title', 'Reset Password')
+
 @section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Reset Password') }}</div>
+    <span class="mb-6 grid size-14 place-items-center rounded-2xl bg-brand-500/10 text-brand-400">
+        <span class="icon-[tabler--key] size-7"></span>
+    </span>
+    <h1 class="font-display text-3xl font-extrabold tracking-tight text-white">{{ __('Reset Password') }}</h1>
+    <p class="mt-1.5 text-ink-400">আপনার ইমেইল দিন, আমরা পাসওয়ার্ড রিসেট লিংক পাঠিয়ে দেব।</p>
 
-                <div class="card-body">
-                    @if (session('status'))
-                        <div class="alert alert-success" role="alert">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-
-                    <form method="POST" action="{{ route('password.email') }}">
-                        @csrf
-
-                        <div class="row mb-3">
-                            <label for="email" class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus>
-
-                                @error('email')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-0">
-                            <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {{ __('Send Password Reset Link') }}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    @if (session('status'))
+        <div class="mt-6 flex items-start gap-2.5 rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300 ring-1 ring-emerald-500/25">
+            <span class="icon-[tabler--circle-check-filled] mt-0.5 size-5 shrink-0 text-emerald-500"></span>
+            {{ session('status') }}
         </div>
-    </div>
-</div>
+    @endif
+
+    <form method="POST" action="{{ route('password.email') }}" class="mt-8 space-y-5">
+        @csrf
+        <div>
+            <label for="email" class="label">{{ __('Email Address') }}</label>
+            <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus
+                class="input bg-white/5 @error('email') input-error @enderror">
+            @error('email')
+                <p class="field-error">{{ $message }}</p>
+            @enderror
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg w-full">
+            <span class="icon-[tabler--send] size-5"></span> {{ __('Send Password Reset Link') }}
+        </button>
+    </form>
+
+    <a href="{{ route('login') }}" class="mt-8 flex items-center justify-center gap-1.5 text-sm font-semibold text-ink-400 hover:text-white">
+        <span class="icon-[tabler--arrow-left] size-4"></span> লগইনে ফিরে যান
+    </a>
 @endsection

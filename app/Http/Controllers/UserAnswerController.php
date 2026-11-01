@@ -2,216 +2,199 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Difficulty;
+use App\Http\Requests\SubmitQuizRequest;
 use App\Models\Answer;
 use App\Models\Category;
 use App\Models\Quiz;
+use App\Models\Setting;
 use App\Models\UserAnswer;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class UserAnswerController extends Controller {
     /**
-     * Display a listing of the resource.
+     * Exam list with the student's latest result for each quiz.
      */
-    // public function index() {
-    //     $totalMarks = UserAnswer::where( 'user_id', auth()->id() )->get()->where( 'status', 'correct' )->count();
-    //     $quizzes    = Quiz::with( 'questions.answers' )->get();
-    //     return view( 'user.quiz.index', compact( 'quizzes', 'totalMarks' ) );
-    // }
+    public function index( Request $request ) {
+        $userId      = auth()->id();
+        $maxAttempts = Setting::maxAttempts();
+        $difficulty  = Difficulty::tryFrom( (string) $request->query( 'difficulty' ) );
+        $categoryId  = $request->filled( 'category' )
+            ? Category::where( 'slug', $request->query( 'category' ) )->value( 'id' )
+            : null;
 
-    public function index() {
-        $userId = auth()->id();
-
-        $categoryId = Category::where( 'slug', request( 'category' ) )
-            ->value( 'id' );
-
-        $totalMarks = UserAnswer::where( 'user_id', $userId )
-            ->where( 'status', 'correct' )
-            ->count();
-
-        $quizzes = Quiz::with( ['category'] )
+        $quizzes = Quiz::query()
+            ->with( 'category:id,name' )
             ->withCount( 'questions' )
-            ->when( $categoryId, function ( $q ) use ( $categoryId ) {
-                $q->where( 'category_id', $categoryId );
-            } )
+            ->when( $categoryId, fn( $query ) => $query->where( 'category_id', $categoryId ) )
+            ->when( $difficulty, fn( $query ) => $query->where( 'difficulty', $difficulty ) )
             ->latest()
             ->get();
 
-        $userAnswers = UserAnswer::where( 'user_id', $userId )
-            ->select( 'quiz_id', 'status' )
-            ->get()
-            ->groupBy( 'quiz_id' );
+        // Number of exams per level (within the selected category) for the level tiles
+        $levelCounts = Quiz::query()
+            ->when( $categoryId, fn( $query ) => $query->where( 'category_id', $categoryId ) )
+            ->selectRaw( 'difficulty, COUNT(*) as total' )
+            ->groupBy( 'difficulty' )
+            ->toBase()
+            ->pluck( 'total', 'difficulty' );
 
-        $categories = Category::where( 'status', true )->get();
+        $latestAttempts = UserAnswer::latestAttemptSummary( $userId );
 
-        $quizResults = [];
+        $quizResults = $quizzes->mapWithKeys( fn( Quiz $quiz ) => [
+            $quiz->id => $quiz->resultFor( $latestAttempts->get( $quiz->id ), $maxAttempts ),
+        ] );
 
-        foreach ( $quizzes as $quiz ) {
-            $answers = $userAnswers->get( $quiz->id, collect() );
-
-            $right = $answers->where( 'status', 'correct' )->count();
-            $wrong = $answers->where( 'status', 'incorrect' )->count();
-            $total = $answers->count();
-
-            $quizResults[$quiz->id] = [
-                'marks'           => $right,
-                'total_questions' => $quiz->questions_count,
-                'total_answers'   => $total,
-                'right'           => $right,
-                'wrong'           => $wrong,
-                'attempted'       => $total > 0,
-            ];
-        }
-
-        return view( 'user.quiz.index', compact(
-            'quizzes',
-            'totalMarks',
-            'quizResults',
-            'categories'
-        ) );
+        return view( 'user.quiz.index', [
+            'quizzes'     => $quizzes,
+            'quizResults' => $quizResults,
+            'totalMarks'  => $latestAttempts->sum( 'correct' ),
+            'categories'  => Category::where( 'status', true )->get( ['id', 'name', 'slug'] ),
+            'difficulty'  => $difficulty,
+            'levelCounts' => $levelCounts,
+        ] );
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Start screen and exam.
      */
-    public function create() {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store( Request $request ) {
-
-        $quiz  = Quiz::find( $request->quiz_id );
-        $score = 0;
-
-        foreach ( $request->answers as $questionId => $answerId ) {
-            $answer = Answer::find( $answerId );
-            if ( $answer->is_correct ) {
-                $score++;
-            }
-
-            UserAnswer::create( [
-                'user_id'     => auth()->id(),
-                'question_id' => $questionId,
-                'answer_id'   => $answerId,
-                'quiz_id'     => $quiz->id,
-                'status'      => $answer->is_correct == 1 ? 'correct' : 'incorrect',
-            ] );
-        }
-
-        return redirect()->route( 'user.quiz.index' )->with( 'success', "You scored $score out of " . $quiz->questions->count() );
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    // public function show( string $quiz ) {
-    //     $quiz = Quiz::with( 'questions.answers' )->whereSlug( $quiz )->first();
-    //     return view( 'user.quiz.view', compact( 'quiz' ) );
-    // }
-    public function show( string $quiz ) {
-        $quiz = Quiz::whereSlug( $quiz )
-            ->with( ['questions' => function ( $query ) {
-                $query->inRandomOrder()
-                    ->with( ['answers' => function ( $q ) {
-                        $q->inRandomOrder();
-                    }] );
-            }, 'category:id,name'] )
-            ->firstOrFail();
+    public function show( string $slug ) {
+        $quiz = Quiz::with( 'category:id,name' )->whereSlug( $slug )->firstOrFail();
 
         if ( $quiz->end_exam_at && now()->gt( $quiz->end_exam_at ) ) {
-            return redirect()
-                ->route( 'user.quiz.index' )
-                ->with(
-                    'error',
-                    'The quiz is not available at the moment. It is scheduled to end on ' . Carbon::parse( $quiz->end_exam_at )->toDayDateTimeString() . '.'
-                );
+            return redirect()->route( 'user.quiz.index' )->with( 'error',
+                'The quiz is not available at the moment. It ended on ' . $quiz->end_exam_at->toDayDateTimeString() . '.' );
         }
 
         if ( $quiz->start_exam_at && now()->lt( $quiz->start_exam_at ) ) {
-            return redirect()
-                ->route( 'user.quiz.index' )
-                ->with(
-                    'warning',
-                    'The quiz is not available at the moment. It is scheduled to start on ' . Carbon::parse( $quiz->start_exam_at )->toDayDateTimeString() . '.'
-                );
-
+            return redirect()->route( 'user.quiz.index' )->with( 'warning',
+                'The quiz is not available at the moment. It is scheduled to start on ' . $quiz->start_exam_at->toDayDateTimeString() . '.' );
         }
 
-        return view( 'user.quiz.view', compact( 'quiz' ) );
+        $attemptsTaken = UserAnswer::attemptsTaken( auth()->id(), $quiz->id );
+        $maxAttempts   = Setting::maxAttempts();
+
+        if ( $attemptsTaken >= $maxAttempts ) {
+            return redirect()->route( 'user.quiz.result', $quiz->slug )
+                ->with( 'warning', 'আপনি এই পরীক্ষার সর্বোচ্চ সংখ্যক চেষ্টা (' . $maxAttempts . ') শেষ করেছেন।' );
+        }
+
+        // is_correct is intentionally not loaded so it never reaches the page
+        $quiz->load( ['questions' => fn( $query ) => $query
+                ->select( 'id', 'quiz_id', 'question' )
+                ->inRandomOrder()
+                ->with( ['answers' => fn( $query ) => $query->select( 'id', 'question_id', 'answer' )->inRandomOrder()] ),
+        ] );
+
+        return view( 'user.quiz.view', [
+            'quiz'               => $quiz,
+            'examSeconds'        => $quiz->examSeconds( $quiz->questions->count() ),
+            'secondsPerQuestion' => Setting::secondsPerQuestion(),
+            'attempt'            => $attemptsTaken + 1,
+            'maxAttempts'        => $maxAttempts,
+        ] );
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Save a submitted exam as a new attempt.
      */
-    public function result( string $quizSlug ) {
-        $quiz = Quiz::with( 'questions.answers' )
-            ->whereSlug( $quizSlug )
+    public function store( SubmitQuizRequest $request ) {
+        $userId = auth()->id();
+        $quiz   = Quiz::findOrFail( $request->integer( 'quiz_id' ) );
+
+        $attempt = UserAnswer::attemptsTaken( $userId, $quiz->id ) + 1;
+        if ( $attempt > Setting::maxAttempts() ) {
+            return redirect()->route( 'user.quiz.result', $quiz->slug )
+                ->with( 'warning', 'আপনি এই পরীক্ষার সর্বোচ্চ সংখ্যক চেষ্টা শেষ করেছেন।' );
+        }
+
+        // Only keep answers that really belong to this quiz's questions
+        $questionIds = $quiz->questions()->pluck( 'id' );
+        $submitted   = collect( $request->input( 'answers', [] ) )->only( $questionIds->all() );
+        $answers     = Answer::whereIn( 'id', $submitted->values() )
+            ->get( ['id', 'question_id', 'is_correct'] )
+            ->keyBy( 'id' );
+
+        $now  = now();
+        $rows = $submitted
+            ->filter( fn( $answerId, $questionId ) => $answers->get( $answerId )?->question_id == $questionId )
+            ->map( fn( $answerId, $questionId ) => [
+                'user_id'     => $userId,
+                'quiz_id'     => $quiz->id,
+                'attempt'     => $attempt,
+                'question_id' => $questionId,
+                'answer_id'   => $answerId,
+                'status'      => $answers[$answerId]->is_correct ? 'correct' : 'incorrect',
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ] );
+
+        UserAnswer::insert( $rows->values()->all() );
+
+        $score = $rows->where( 'status', 'correct' )->count();
+
+        return redirect()
+            ->route( 'user.quiz.result', [$quiz->slug, 'attempt' => $attempt] )
+            ->with( 'success', "You scored $score out of {$questionIds->count()}" );
+    }
+
+    /**
+     * Review of one attempt (the latest by default).
+     */
+    public function result( Request $request, string $slug ) {
+        $userId = auth()->id();
+        $quiz   = Quiz::with( 'questions:id,quiz_id,question', 'questions.answers:id,question_id,answer,is_correct' )
+            ->whereSlug( $slug )
             ->firstOrFail();
 
-        $userAnswers = UserAnswer::where( 'user_id', auth()->id() )
+        $attemptsTaken = UserAnswer::attemptsTaken( $userId, $quiz->id );
+        if ( $attemptsTaken === 0 ) {
+            return redirect()->route( 'user.quiz.show', $quiz->slug );
+        }
+
+        $attempt = min( max( 1, $request->integer( 'attempt', $attemptsTaken ) ), $attemptsTaken );
+
+        // question_id => chosen answer_id for this attempt
+        $chosen = UserAnswer::where( 'user_id', $userId )
             ->where( 'quiz_id', $quiz->id )
-            ->get()
-            ->keyBy( 'question_id' );
+            ->where( 'attempt', $attempt )
+            ->pluck( 'answer_id', 'question_id' );
 
-        // Transform questions for user's answers
-        $quiz->questions->transform( function ( $question ) use ( $userAnswers ) {
-            $userAnswer = $userAnswers->get( $question->id );
+        foreach ( $quiz->questions as $question ) {
+            $question->user_answer_id = $chosen->get( $question->id );
+            $question->is_correct     = (bool) $question->answers->firstWhere( 'id', $question->user_answer_id )?->is_correct;
+        }
 
-            $question->is_correct     = false; // default
-            $question->user_answer_id = $userAnswer->answer_id ?? null;
+        $rightAnswers = $quiz->questions->where( 'is_correct', true )->count();
 
-            if ( $userAnswer ) {
-                $question->is_correct = $question->answers
-                    ->where( 'id', $userAnswer->answer_id )
-                    ->where( 'is_correct', true )
-                    ->isNotEmpty();
-            }
-
-            return $question;
-        } );
-
-        // Calculate summary
-        $totalQuestions = $quiz->questions->count();
-        $totalMarks     = $quiz->questions->where( 'is_correct', true )->count();
-        $totalAnswers   = $userAnswers->count();
-        $rightAnswers   = $quiz->questions->where( 'is_correct', true )->count();
-        $wrongAnswers   = $quiz->questions->where( 'is_correct', false )->whereNotNull( 'user_answer_id' )->count();
-
-        return view( 'user.quiz.result', compact(
-            'quiz',
-            'totalMarks',
-            'totalQuestions',
-            'totalAnswers',
-            'rightAnswers',
-            'wrongAnswers'
-        ) );
+        return view( 'user.quiz.result', [
+            'quiz'          => $quiz,
+            'attempt'       => $attempt,
+            'attemptsTaken' => $attemptsTaken,
+            'canRetake'     => $attemptsTaken < Setting::maxAttempts(),
+            'totalMarks'    => $rightAnswers,
+            'rightAnswers'  => $rightAnswers,
+            'wrongAnswers'  => $chosen->count() - $rightAnswers,
+        ] );
     }
 
     /**
-     * Update the specified resource in storage.
+     * Ranking by accuracy, using each student's latest attempt per quiz.
      */
     public function leaderboard() {
-        $leaderboard = UserAnswer::with( 'user' )
-            ->selectRaw( 'user_id,
-             COUNT(CASE WHEN status = "correct" THEN 1 END) as total_correct,
-             COUNT(question_id) as total_attempted,
-             COUNT(DISTINCT quiz_id) as total_quizzes,
-             (COUNT(CASE WHEN status = "correct" THEN 1 END) * 100.0 / NULLIF(COUNT(question_id), 0)) as average_score' )
+        $leaderboard = UserAnswer::query()
+            ->latestAttempt()
+            ->with( 'user:id,name' )
+            ->selectRaw( "user_id,
+                SUM(CASE WHEN status = 'correct' THEN 1 ELSE 0 END) as total_correct,
+                COUNT(*) as total_attempted,
+                COUNT(DISTINCT quiz_id) as total_quizzes,
+                SUM(CASE WHEN status = 'correct' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as average_score" )
             ->groupBy( 'user_id' )
-            ->orderByDesc( 'average_score' ) // গড় নম্বরের ভিত্তিতে র‍্যাঙ্কিং
-            ->orderByDesc( 'total_quizzes' ) // গড় সমান হলে যে বেশি পরীক্ষা দিয়েছে সে আগে থাকবে
+            ->orderByDesc( 'average_score' )  // Higher accuracy first
+            ->orderByDesc( 'total_quizzes' )  // On a tie, more exams taken ranks higher
             ->get();
 
         return view( 'user.quiz.leaderboard', compact( 'leaderboard' ) );
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy( string $id ) {
-        //
     }
 }

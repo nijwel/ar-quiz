@@ -7,13 +7,13 @@
         "dev": "vite"
     },
     "devDependencies": {
-        "@popperjs/core": "^2.11.6",
+        "@iconify-json/tabler": "^1.2.43",
+        "@iconify/tailwind4": "^1.2.3",
         "@tailwindcss/vite": "^4.0.0",
+        "alpinejs": "^3.17.5",
         "axios": "^1.8.2",
-        "bootstrap": "^5.2.3",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^1.2.0",
-        "sass": "^1.56.1",
         "tailwindcss": "^4.0.0",
         "vite": "^6.2.4"
     }

@@ -1,11 +1,337 @@
 @import 'tailwindcss';
+@plugin '@iconify/tailwind4';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../../app/Enums/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Plus Jakarta Sans', 'Hind Siliguri', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Hind Siliguri', ui-sans-serif, system-ui, sans-serif;
+
+    /* Brand: crimson */
+    --color-brand-50: #fff1f3;
+    --color-brand-100: #ffe0e5;
+    --color-brand-200: #ffc5ce;
+    --color-brand-300: #ff97a8;
+    --color-brand-400: #ff5c77;
+    --color-brand-500: #f72f50;
+    --color-brand-600: #e1163a;
+    --color-brand-700: #bd0d2f;
+    --color-brand-800: #9d0f2c;
+    --color-brand-900: #86112b;
+    --color-brand-950: #4b0313;
+
+    /* Ink: deep navy neutrals */
+    --color-ink-50: #f5f6fa;
+    --color-ink-100: #eceef5;
+    --color-ink-200: #d9dce8;
+    --color-ink-300: #b6bbcf;
+    --color-ink-400: #8a90aa;
+    --color-ink-500: #646a86;
+    --color-ink-600: #4a5069;
+    --color-ink-700: #363b52;
+    --color-ink-800: #23273a;
+    --color-ink-900: #161927;
+    --color-ink-950: #0c0e18;
+
+    /* Volt: neon red accent */
+    --color-volt-200: #ffb3be;
+    --color-volt-300: #ff6b80;
+    --color-volt-400: #ff2a46;
+    --color-volt-500: #e50921;
+
+    --color-canvas: #060608;
+    --color-snow: #ffffff; /* stays white in both modes (text on solid red/green) */
+
+    --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    --animate-float: float 6s ease-in-out infinite;
+
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes float {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+}
+
+@utility bg-grid {
+    background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--color-white) 6%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--color-white) 6%, transparent) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+@utility bg-dots {
+    background-image: radial-gradient(color-mix(in srgb, var(--color-white) 6%, transparent) 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+@utility glass-panel {
+    background: linear-gradient(135deg, var(--glass-from), var(--glass-to));
+    box-shadow:
+        inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge),
+        0 24px 60px -24px var(--glass-shadow);
+    backdrop-filter: blur(24px) saturate(140%);
+}
+
+@layer base {
+    /* Dark mode (default) */
+    html {
+        color-scheme: dark;
+        -webkit-tap-highlight-color: transparent;
+        --glass-from: rgb(255 255 255 / 0.07);
+        --glass-to: rgb(255 255 255 / 0.02);
+        --glass-highlight: rgb(255 255 255 / 0.08);
+        --glass-edge: rgb(255 255 255 / 0.08);
+        --glass-shadow: rgb(0 0 0 / 0.8);
+        --aurora-1: rgb(225 22 58 / 0.22);
+        --aurora-2: rgb(157 15 44 / 0.25);
+        --aurora-3: rgb(255 42 70 / 0.05);
+    }
+
+    /* Light mode: flip the neutral tokens so every glass/ink class adapts on its own */
+    html.light {
+        color-scheme: light;
+        --color-white: #17101a;
+        --color-black: #ffffff;
+        --color-canvas: #f8f2f4;
+        --color-ink-50:  #0c0e18;
+        --color-ink-950:  #f5f6fa;
+        --color-ink-100:  #161927;
+        --color-ink-900:  #eceef5;
+        --color-ink-200:  #23273a;
+        --color-ink-800:  #d9dce8;
+        --color-ink-300:  #363b52;
+        --color-ink-700:  #b6bbcf;
+        --color-ink-400:  #4a5069;
+        --color-ink-600:  #8a90aa;
+        --color-brand-50:  #4b0313;
+        --color-brand-100:  #86112b;
+        --color-brand-200:  #9d0f2c;
+        --color-brand-300:  #bd0d2f;
+        --color-brand-400:  #e1163a;
+        --color-emerald-50:  oklch(26.2% 0.051 172.552);
+        --color-emerald-100:  oklch(37.8% 0.077 168.94);
+        --color-emerald-200:  oklch(43.2% 0.095 166.913);
+        --color-emerald-300:  oklch(50.8% 0.118 165.612);
+        --color-emerald-400:  oklch(59.6% 0.145 163.225);
+        --color-rose-50:  oklch(27.1% 0.105 12.094);
+        --color-rose-100:  oklch(41% 0.159 10.272);
+        --color-rose-200:  oklch(45.5% 0.188 13.697);
+        --color-rose-300:  oklch(51.4% 0.222 16.935);
+        --color-rose-400:  oklch(58.6% 0.253 17.585);
+        --color-amber-50:  oklch(27.9% 0.077 45.635);
+        --color-amber-100:  oklch(41.4% 0.112 45.904);
+        --color-amber-200:  oklch(47.3% 0.137 46.201);
+        --color-amber-300:  oklch(55.5% 0.163 48.998);
+        --color-amber-400:  oklch(66.6% 0.179 58.318);
+        --color-sky-50:  oklch(29.3% 0.066 243.157);
+        --color-sky-100:  oklch(39.1% 0.09 240.876);
+        --color-sky-200:  oklch(44.3% 0.11 240.79);
+        --color-sky-300:  oklch(50% 0.134 242.749);
+        --color-sky-400:  oklch(58.8% 0.158 241.966);
+        --color-fuchsia-50:  oklch(29.3% 0.136 325.661);
+        --color-fuchsia-100:  oklch(40.1% 0.17 325.612);
+        --color-fuchsia-200:  oklch(45.2% 0.211 324.591);
+        --color-fuchsia-300:  oklch(51.8% 0.253 323.949);
+        --color-fuchsia-400:  oklch(59.1% 0.293 322.896);
+        --color-orange-50:  oklch(26.6% 0.079 36.259);
+        --color-orange-100:  oklch(40.8% 0.123 38.172);
+        --color-orange-200:  oklch(47% 0.157 37.304);
+        --color-orange-300:  oklch(55.3% 0.195 38.402);
+        --color-orange-400:  oklch(64.6% 0.222 41.116);
+        --color-volt-200:  #9d0f2c;
+        --color-volt-300:  #bd0d2f;
+        --color-volt-400:  #e50921;
+        --glass-from: rgb(255 255 255 / 0.78);
+        --glass-to: rgb(255 255 255 / 0.45);
+        --glass-highlight: rgb(255 255 255 / 0.9);
+        --glass-edge: rgb(23 16 26 / 0.07);
+        --glass-shadow: rgb(150 20 45 / 0.18);
+        --aurora-1: rgb(225 22 58 / 0.16);
+        --aurora-2: rgb(255 92 119 / 0.18);
+        --aurora-3: rgb(255 42 70 / 0.06);
+    }
+
+    body {
+        background-color: var(--color-canvas);
+        background-image:
+            radial-gradient(60rem 40rem at 0% -10%, var(--aurora-1), transparent 60%),
+            radial-gradient(50rem 35rem at 110% 110%, var(--aurora-2), transparent 60%),
+            radial-gradient(30rem 20rem at 60% 40%, var(--aurora-3), transparent 70%);
+        background-attachment: fixed;
+        transition: background-color 0.3s ease;
+    }
+
+    option {
+        background: var(--color-ink-950);
+        color: var(--color-white);
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    ::selection {
+        background: var(--color-volt-400);
+        color: var(--color-snow);
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--color-white) 12%, transparent);
+        border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--color-brand-400);
+    }
+}
+
+@layer components {
+    .card {
+        @apply rounded-3xl bg-white/[0.04] shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_20px_50px_-24px_rgb(0_0_0/0.7)] ring-1 ring-white/10 backdrop-blur-xl;
+    }
+
+    /* Buttons */
+    .btn {
+        @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition duration-200 select-none focus-visible:ring-4 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .btn-lg {
+        @apply rounded-2xl px-6 py-3.5 text-base;
+    }
+
+    .btn-sm {
+        @apply rounded-lg px-3 py-1.5 text-xs;
+    }
+
+    .btn-icon {
+        @apply size-9 rounded-xl p-0;
+    }
+
+    .btn-primary {
+        @apply bg-gradient-to-b from-brand-500 to-brand-700 text-snow shadow-lg shadow-brand-600/30 ring-1 ring-brand-400/40 hover:-translate-y-0.5 hover:shadow-brand-500/50 focus-visible:ring-brand-500/40;
+    }
+
+    .btn-dark {
+        @apply bg-white/10 text-white ring-1 ring-white/15 backdrop-blur hover:-translate-y-0.5 hover:bg-white/15 focus-visible:ring-white/20;
+    }
+
+    .btn-volt {
+        @apply bg-volt-400 text-snow shadow-lg shadow-volt-500/40 hover:-translate-y-0.5 hover:bg-volt-300 hover:shadow-volt-400/60 focus-visible:ring-volt-400/40;
+    }
+
+    .btn-soft {
+        @apply bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/20 hover:bg-brand-500/20 focus-visible:ring-brand-500/30;
+    }
+
+    .btn-ghost {
+        @apply bg-white/5 text-ink-200 ring-1 ring-white/10 hover:bg-white/10 hover:text-white focus-visible:ring-white/20;
+    }
+
+    .btn-glass {
+        @apply bg-white/10 text-white ring-1 ring-white/20 backdrop-blur hover:bg-white/20 focus-visible:ring-white/30;
+    }
+
+    .btn-danger {
+        @apply bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20 hover:bg-rose-500/20 focus-visible:ring-rose-500/30;
+    }
+
+    /* Forms */
+    .label {
+        @apply mb-1.5 block text-sm font-semibold text-ink-200;
+    }
+
+    .input {
+        @apply block w-full rounded-xl border-0 bg-white/5 px-4 py-3 text-sm text-white ring-1 ring-white/10 transition placeholder:text-ink-500 focus:bg-white/[0.08] focus:ring-2 focus:ring-brand-500 focus:outline-none;
+    }
+
+    .input-error {
+        @apply bg-rose-500/10 ring-rose-500/50 focus:ring-rose-500;
+    }
+
+    .field-error {
+        @apply mt-1.5 flex items-center gap-1 text-xs font-medium text-rose-400;
+    }
+
+    /* Badges */
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap;
+    }
+
+    /* Data table */
+    .data-table {
+        @apply w-full text-left text-sm;
+    }
+
+    .data-table thead th {
+        @apply bg-white/[0.03] px-5 py-3.5 text-[11px] font-bold tracking-wider whitespace-nowrap text-ink-400 uppercase first:pl-6 last:pr-6;
+    }
+
+    .data-table tbody td {
+        @apply border-t border-white/5 px-5 py-4 align-middle text-ink-300 first:pl-6 last:pr-6;
+    }
+
+    .data-table tbody tr {
+        @apply transition-colors hover:bg-white/[0.03];
+    }
+
+    /* Navigation */
+    .side-link {
+        @apply relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-ink-300 transition hover:bg-white/5 hover:text-white;
+    }
+
+    .side-link.is-active {
+        @apply bg-gradient-to-r from-brand-600/25 to-transparent text-white ring-1 ring-brand-500/20 before:absolute before:inset-y-2 before:-left-4 before:w-1 before:rounded-r-full before:bg-volt-400 before:shadow-[0_0_12px_var(--color-volt-400)];
+    }
+
+    .top-link {
+        @apply flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-ink-400 transition hover:text-white;
+    }
+
+    .top-link.is-active {
+        @apply bg-brand-600 text-snow shadow-lg shadow-brand-600/40 hover:text-snow;
+    }
+
+    /* Light mode: frosted white glass instead of tinted dark glass */
+    html.light .card {
+        @apply shadow-[inset_0_1px_0_rgb(255_255_255/0.9),0_16px_40px_-20px_rgb(150_20_45/0.2)];
+        background-color: rgb(255 255 255 / 0.62);
+    }
+
+    html.light .input {
+        background-color: rgb(255 255 255 / 0.7);
+    }
+
+    html.light .input:focus {
+        background-color: rgb(255 255 255 / 0.95);
+    }
+
+    html.light .btn-ghost,
+    html.light .btn-dark {
+        background-color: rgb(255 255 255 / 0.6);
+    }
 }

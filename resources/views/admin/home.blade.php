@@ -1,163 +1,102 @@
 @extends('layouts.app')
 
+@section('title', 'Dashboard')
+
 @section('content')
-    <style>
-        :root {
-            --quiz-primary: #4e54c8;
-            --quiz-secondary: #764ba2;
-            --quiz-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
+    <x-page-hero eyebrow="{{ now()->format('l, d M Y') }}" title="Welcome back, {{ Auth::user()->name }} 👋"
+        subtitle="আজকের কুইজ স্ট্যাটাস এবং পারফরম্যান্স রিপোর্ট চেক করুন।">
+        <x-slot:actions>
+            <a href="{{ route('quiz.create') }}" class="btn btn-volt">
+                <span class="icon-[tabler--plus] size-4"></span> Create Quiz
+            </a>
+            <a href="{{ route('participant.index') }}" class="btn btn-glass">
+                <span class="icon-[tabler--users-group] size-4"></span> Students
+            </a>
+        </x-slot:actions>
+    </x-page-hero>
 
-        .welcome-banner {
-            background: var(--quiz-gradient);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(78, 84, 200, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
+    @php
+        $stats = [
+            ['Total Quizzes', $quizCount, 'icon-[tabler--file-text]', 'bg-brand-500/10 text-brand-400', 'from-brand-500/10'],
+            ['Participants', $userCount, 'icon-[tabler--users-group]', 'bg-emerald-500/10 text-emerald-400', 'from-emerald-500/10'],
+            ['Live Right Now', $activeCount, 'icon-[tabler--broadcast]', 'bg-amber-500/10 text-amber-400', 'from-amber-500/10'],
+        ];
+    @endphp
 
-        .welcome-banner h2 {
-            font-weight: 800;
-            letter-spacing: -1px;
-        }
-
-        .stat-card {
-            border: none;
-            border-radius: 20px;
-            padding: 25px;
-            transition: all 0.3s ease;
-            background: #fff;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            height: 100%;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .icon-box {
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-        }
-
-        .bg-soft-primary {
-            background: rgba(78, 84, 200, 0.1);
-            color: #4e54c8;
-        }
-
-        .bg-soft-success {
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-        }
-
-        .bg-soft-info {
-            background: rgba(23, 162, 184, 0.1);
-            color: #17a2b8;
-        }
-
-        .quick-link-card {
-            border: 1px solid #eee;
-            border-radius: 15px;
-            padding: 20px;
-            text-decoration: none;
-            color: #333;
-            transition: 0.3s;
-            display: block;
-        }
-
-        .quick-link-card:hover {
-            background: #f8f9fa;
-            border-color: var(--quiz-primary);
-            color: var(--quiz-primary);
-        }
-    </style>
-
-    <div class="container py-4">
-        <div class="welcome-banner">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h2 class="display-5">Welcome Back, {{ Auth::user()->name }}! 👋</h2>
-                    <p class="lead opacity-75 mb-0">আজকের কুইজ স্ট্যাটাস এবং পারফরম্যান্স রিপোর্ট চেক করুন।</p>
-                </div>
-                <div class="col-md-4 text-end d-none d-md-block">
-                    <i class="bi bi-speedometer2" style="font-size: 80px; opacity: 0.2;"></i>
+    <div class="mb-8 grid gap-4 sm:grid-cols-3">
+        @foreach ($stats as $i => [$label, $value, $icon, $tone, $glow])
+            <div class="card group relative animate-rise overflow-hidden p-6 transition hover:-translate-y-1"
+                style="animation-delay: {{ $i * 80 }}ms">
+                <div class="absolute inset-0 bg-gradient-to-br {{ $glow }} to-transparent opacity-0 transition group-hover:opacity-100"></div>
+                <div class="relative flex items-start justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-ink-400">{{ $label }}</p>
+                        <p class="mt-2 font-display text-4xl font-extrabold tracking-tight text-white">{{ number_format($value) }}</p>
+                    </div>
+                    <span class="grid size-12 place-items-center rounded-2xl {{ $tone }}">
+                        <span class="{{ $icon }} size-6"></span>
+                    </span>
                 </div>
             </div>
+        @endforeach
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        {{-- Recent quizzes --}}
+        <div class="card overflow-hidden lg:col-span-2">
+            <div class="flex items-center justify-between px-6 pt-6 pb-4">
+                <div>
+                    <h2 class="font-display text-lg font-bold text-white">Recent Quizzes</h2>
+                    <p class="text-sm text-ink-400">সর্বশেষ তৈরি করা কুইজগুলো</p>
+                </div>
+                <a href="{{ route('quiz.index') }}" class="btn btn-soft btn-sm">
+                    View all <span class="icon-[tabler--arrow-right] size-3.5"></span>
+                </a>
+            </div>
+            <ul class="divide-y divide-white/5">
+                @forelse ($recentQuizzes as $quiz)
+                    @php
+                        $live = $quiz->start_exam_at && $quiz->end_exam_at && now()->between($quiz->start_exam_at, $quiz->end_exam_at);
+                    @endphp
+                    <li class="flex items-center gap-4 px-6 py-4 transition hover:bg-white/5">
+                        <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/10 font-display text-sm font-bold text-volt-400">
+                            {{ str_pad($quiz->questions_count, 2, '0', STR_PAD_LEFT) }}
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-semibold text-white">{{ $quiz->title }}</p>
+                            <p class="text-xs text-ink-400">{{ $quiz->category?->name ?? 'Uncategorized' }} · {{ $quiz->questions_count }} questions</p>
+                        </div>
+                        @if ($live)
+                            <span class="badge bg-amber-500/10 text-amber-300"><span class="size-1.5 animate-pulse rounded-full bg-amber-500"></span> Live</span>
+                        @endif
+                        <a href="{{ route('quiz.edit', $quiz->id) }}" class="btn btn-ghost btn-icon" title="Edit">
+                            <span class="icon-[tabler--pencil] size-4"></span>
+                        </a>
+                    </li>
+                @empty
+                    <li class="px-6 py-10 text-center text-sm text-ink-400">এখনো কোনো কুইজ তৈরি হয়নি।</li>
+                @endforelse
+            </ul>
         </div>
 
-        @if (session('status'))
-            <div class="alert alert-success border-0 shadow-sm mb-4" style="border-radius: 15px;">
-                <i class="bi bi-check-circle-fill me-2"></i> {{ session('status') }}
-            </div>
-        @endif
-
-        <div class="row g-4 mb-5">
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="icon-box bg-soft-primary">
-                        <i class="bi bi-journal-text"></i>
-                    </div>
-                    <h6 class="text-muted fw-bold">Total Quizzes</h6>
-                    <h2 class="fw-extrabold mb-0">{{ $quizCount }}</h2>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="icon-box bg-soft-success">
-                        <i class="bi bi-people"></i>
-                    </div>
-                    <h6 class="text-muted fw-bold">Total Participants</h6>
-                    <h2 class="fw-extrabold mb-0">{{ $userCount }}</h2>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="icon-box bg-soft-info">
-                        <i class="bi bi-graph-up-arrow"></i>
-                    </div>
-                    <h6 class="text-muted fw-bold">Active Exams</h6>
-                    <h2 class="fw-extrabold mb-0">05</h2>
-                </div>
-            </div>
-        </div>
-
-        <h4 class="fw-bold mb-4 text-dark">Quick Actions</h4>
-        <div class="row g-3">
-            <div class="col-md-3">
-                <a href="{{ route('quiz.create') }}" class="quick-link-card text-center">
-                    <i class="bi bi-plus-circle fs-3 mb-2 d-block"></i>
-                    <span class="fw-bold">Create Quiz</span>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ route('quiz.index') }}" class="quick-link-card text-center">
-                    <i class="bi bi-list-task fs-3 mb-2 d-block"></i>
-                    <span class="fw-bold">Manage Quizzes</span>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ route('participant.index') }}" class="quick-link-card text-center">
-                    <i class="bi bi-person-badge fs-3 mb-2 d-block"></i>
-                    <span class="fw-bold">View Students</span>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="#" class="quick-link-card text-center">
-                    <i class="bi bi-gear fs-3 mb-2 d-block"></i>
-                    <span class="fw-bold">Settings</span>
-                </a>
+        {{-- Quick actions --}}
+        <div class="card p-6">
+            <h2 class="mb-4 font-display text-lg font-bold text-white">Quick Actions</h2>
+            <div class="grid grid-cols-2 gap-3">
+                @foreach ([
+                    ['Create Quiz', route('quiz.create'), 'icon-[tabler--square-rounded-plus]', 'text-brand-400 bg-brand-500/10'],
+                    ['Manage Quizzes', route('quiz.index'), 'icon-[tabler--list-details]', 'text-sky-400 bg-sky-500/10'],
+                    ['Categories', route('category.index'), 'icon-[tabler--category]', 'text-fuchsia-400 bg-fuchsia-500/10'],
+                    ['Students', route('participant.index'), 'icon-[tabler--school]', 'text-emerald-400 bg-emerald-500/10'],
+                ] as [$label, $href, $icon, $tone])
+                    <a href="{{ $href }}"
+                        class="group flex flex-col items-start gap-3 rounded-2xl p-4 ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:ring-brand-500/25 hover:shadow-lg hover:shadow-brand-500/5">
+                        <span class="grid size-10 place-items-center rounded-xl {{ $tone }}">
+                            <span class="{{ $icon }} size-5"></span>
+                        </span>
+                        <span class="text-sm font-semibold text-white">{{ $label }}</span>
+                    </a>
+                @endforeach
             </div>
         </div>
     </div>

@@ -4,6 +4,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserAnswerController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +62,10 @@ Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( fu
         Route::delete( '/destroy/{id}', [QuizController::class, 'destroy'] )->name( 'quiz.destroy' );
         Route::post( '/upload', [QuizController::class, 'upload'] )->name( 'quiz.upload' );
     } );
+
+    Route::get( '/settings', [SettingController::class, 'index'] )->name( 'admin.settings' );
+    Route::put( '/settings', [SettingController::class, 'update'] )->name( 'admin.settings.update' );
+    Route::put( '/settings/branding', [SettingController::class, 'updateBranding'] )->name( 'admin.settings.branding' );
 
     Route::prefix( 'participants' )->group( function () {
         Route::get( '/', [ParticipantController::class, 'index'] )->name( 'participant.index' );

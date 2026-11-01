@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Quiz;
+use App\Models\Setting;
 use App\Models\User;
+use App\Models\UserAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -13,7 +15,7 @@ class ParticipantController extends Controller {
      */
     public function index() {
         $participants = User::whereType( 'user' )
-            ->withCount( 'quizResults' )
+            ->withCount( ['quizResults' => fn( $query ) => $query->latestAttempt()] )
             ->withCount( ['userAnswers as quizzes_attempted_count' => function ( $query ) {
                 $query->select( DB::raw( 'count(distinct quiz_id)' ) );
             }] )
@@ -22,29 +24,23 @@ class ParticipantController extends Controller {
     }
 
     public function myExams() {
-        $userId = auth()->id();
+        $latestAttempts = UserAnswer::latestAttemptSummary( auth()->id() );
+        $maxAttempts    = Setting::maxAttempts();
 
-        $quizIds = DB::table( 'user_answers' )
-            ->where( 'user_id', $userId )
-            ->distinct()
-            ->pluck( 'quiz_id' );
-
-        $quizzes = Quiz::whereIn( 'id', $quizIds )
+        $quizzes = Quiz::with( 'category:id,name' )
             ->withCount( 'questions' )
-            ->with( ['userAnswers' => function ( $query ) use ( $userId ) {
-                $query->where( 'user_id', $userId );
-            }] )
+            ->whereIn( 'id', $latestAttempts->keys() )
             ->get();
 
-        // ইউজারের অর্জিত মোট নম্বর (টোটাল পয়েন্ট) ক্যালকুলেশন
-        $totalMarks = 0;
-        foreach ( $quizzes as $quiz ) {
-            $totalMarks += $quiz->userAnswers->filter( function ( $ans ) {
-                return $ans->status == 'correct';
-            } )->count();
-        }
+        $quizResults = $quizzes->mapWithKeys( fn( Quiz $quiz ) => [
+            $quiz->id => $quiz->resultFor( $latestAttempts->get( $quiz->id ), $maxAttempts ),
+        ] );
 
-        return view( 'user.quiz.my_exams', compact( 'quizzes', 'totalMarks' ) );
+        return view( 'user.quiz.my_exams', [
+            'quizzes'     => $quizzes,
+            'quizResults' => $quizResults,
+            'totalMarks'  => $latestAttempts->sum( 'correct' ),
+        ] );
     }
 
     /**
@@ -67,16 +63,16 @@ class ParticipantController extends Controller {
     public function show( string $id ) {
         $participant = User::findOrFail( $id );
 
-        $quizIds = DB::table( 'user_answers' )
-            ->where( 'user_id', $id )
-            ->distinct()
-            ->pluck( 'quiz_id' );
-
-        $quizzes = Quiz::whereIn( 'id', $quizIds )
+        // Each quiz with only this student's latest attempt
+        $quizzes = Quiz::with( [
+            'category:id,name',
+            'userAnswers' => fn( $query ) => $query
+                ->where( 'user_id', $participant->id )
+                ->latestAttempt()
+                ->select( 'id', 'quiz_id', 'user_id', 'attempt', 'status' ),
+        ] )
             ->withCount( 'questions' )
-            ->with( ['userAnswers' => function ( $query ) use ( $id ) {
-                $query->where( 'user_id', $id );
-            }, 'category'] )
+            ->whereHas( 'userAnswers', fn( $query ) => $query->where( 'user_id', $participant->id ) )
             ->get();
 
         return view( 'admin.participants.view', compact( 'participant', 'quizzes' ) );
