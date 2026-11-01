@@ -3,32 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Difficulty;
+use App\Http\Requests\BulkDestroyQuizRequest;
+use App\Http\Requests\BulkQuizStatusRequest;
+use App\Http\Requests\ImportQuizRequest;
 use App\Http\Requests\QuizRequest;
 use App\Models\Category;
 use App\Models\Quiz;
 use App\Models\Setting;
+use App\Services\QuizTransfer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class QuizController extends Controller {
+    /** Page sizes the quiz list offers; the first one is the default. */
+    private const PER_PAGE_OPTIONS = [10, 25, 50, 100, 150, 200, 300, 500];
+
+    public function __construct( private QuizTransfer $transfer ) {}
+
     /**
      * Display a listing of the resource.
      */
     public function index( Request $request ) {
-        $difficulty = Difficulty::tryFrom( (string) $request->query( 'difficulty' ) );
+        $perPage = in_array( $request->integer( 'per_page' ), self::PER_PAGE_OPTIONS, true )
+            ? $request->integer( 'per_page' )
+            : self::PER_PAGE_OPTIONS[0];
 
-        $quizzes = Quiz::query()
+        $quizzes = $this->filteredQuery( $request )
             ->with( 'category:id,name' )
             ->withCount( 'questions' )
-            ->when( $request->query( 'category' ), fn( $query, $categoryId ) => $query->where( 'category_id', $categoryId ) )
-            ->when( $difficulty, fn( $query ) => $query->where( 'difficulty', $difficulty ) )
             ->latest()
-            ->paginate( 10 );
+            ->paginate( $perPage );
 
         return view( 'admin.quiz.index', [
-            'quizzes'    => $quizzes,
-            'categories' => $this->activeCategories(),
+            'quizzes'        => $quizzes,
+            'categories'     => $this->categories(),
+            'perPage'        => $perPage,
+            'perPageOptions' => self::PER_PAGE_OPTIONS,
         ] );
     }
 
@@ -37,7 +49,7 @@ class QuizController extends Controller {
      */
     public function create() {
         return view( 'admin.quiz.create', [
-            'categories'         => $this->activeCategories(),
+            'categories'         => $this->categories(),
             'secondsPerQuestion' => Setting::secondsPerQuestion(),
         ] );
     }
@@ -49,17 +61,10 @@ class QuizController extends Controller {
         DB::transaction( function () use ( $request ) {
             $quiz = Quiz::create( $request->quizData() + ['slug' => Str::slug( $request->title )] );
 
-            $this->saveQuestions( $quiz, $request->input( 'questions' ) );
+            $this->transfer->saveQuestions( $quiz, $request->questionsData() );
         } );
 
         return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz created successfully.' );
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show( string $id ) {
-        //
     }
 
     /**
@@ -73,7 +78,7 @@ class QuizController extends Controller {
 
         return view( 'admin.quiz.edit', [
             'quiz'               => $quiz,
-            'categories'         => $this->activeCategories(),
+            'categories'         => $this->categories(),
             'secondsPerQuestion' => Setting::secondsPerQuestion(),
         ] );
     }
@@ -89,279 +94,120 @@ class QuizController extends Controller {
 
             // Questions are replaced as a whole; answers are removed by the FK cascade
             $quiz->questions()->delete();
-            $this->saveQuestions( $quiz, $request->input( 'questions' ) );
+            $this->transfer->saveQuestions( $quiz, $request->questionsData() );
         } );
 
         return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz updated successfully.' );
     }
 
     /**
+     * Show or hide the quiz in the student panel.
+     */
+    public function toggleStatus( Quiz $quiz ) {
+        $quiz->update( ['status' => !$quiz->status] );
+
+        return back()->with( 'success', "\"{$quiz->title}\" is now " . ( $quiz->status ? 'shown to' : 'hidden from' ) . ' students.' );
+    }
+
+    /**
+     * Show or hide several selected quizzes at once.
+     */
+    public function bulkStatus( BulkQuizStatusRequest $request ) {
+        $show    = $request->boolean( 'status' );
+        $updated = Quiz::whereIn( 'id', $request->validated( 'ids' ) )->update( ['status' => $show] );
+
+        return back()->with( 'success', "$updated quiz(zes) " . ( $show ? 'shown to' : 'hidden from' ) . ' students.' );
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy( string $id ) {
+        Quiz::findOrFail( $id )->delete();
 
-        try {
-            $quiz = Quiz::findOrFail( $id );
-            // $quiz->questions()->each( function ( $question ) {
-            //     $question->answers()->delete();
-            //     $question->delete();
-            // } );
-            $quiz->delete();
-
-            return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz deleted successfully.' );
-        } catch ( \Exception $e ) {
-            return redirect()->back()->withErrors( ['error' => 'Failed to delete quiz: ' . $e->getMessage()] );
-        }
+        return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz deleted successfully.' );
     }
 
     /**
-     * Handle quiz file upload and import.
+     * Delete several selected quizzes at once. Questions, answers and student
+     * attempts are removed by the FK cascade.
      */
-    // public function upload( Request $request ) {
-    //     $request->validate( [
-    //         'quiz_file' => 'required|file|mimes:json',
-    //     ] );
+    public function bulkDestroy( BulkDestroyQuizRequest $request ) {
+        $deleted = Quiz::whereIn( 'id', $request->validated( 'ids' ) )->delete();
 
-    //     $file = $request->file( 'quiz_file' );
-
-    //     $quizData = json_decode( file_get_contents( $file->path() ), true );
-
-    //     Log::info( 'Quiz Data: ', $quizData );
-
-    //     if ( !isset( $quizData['quiz'] ) || !isset( $quizData['quiz']['title'] ) ) {
-    //         return redirect()->back()->withErrors( ['error' => 'Invalid quiz file format.'] );
-    //     }
-
-    //     $existingQuiz = Quiz::where( 'title', $quizData['quiz']['title'] )->first();
-    //     if ( $existingQuiz ) {
-    //         return redirect()->back()->withErrors( ['error' => 'A quiz with the same title already exists.'] );
-    //     }
-
-    //     $quiz = Quiz::create( [
-    //         'title'       => $quizData['quiz']['title'],
-    //         'slug'        => Str::slug( $quizData['quiz']['title'] ),
-    //         'description' => $quizData['quiz']['description'],
-    //     ] );
-
-    //     foreach ( $quizData['quiz']['questions'] as $questionData ) {
-    //         $question = $quiz->questions()->create( [
-    //             'question' => $questionData['question'],
-    //         ] );
-
-    //         foreach ( $questionData['answers'] as $answerData ) {
-    //             $question->answers()->create( [
-    //                 'answer'     => $answerData['answer'],
-    //                 'is_correct' => $answerData['is_correct'],
-    //             ] );
-    //         }
-    //     }
-
-    //     return redirect()->route( 'quiz.index' )->with( 'success', 'Quiz imported successfully.' );
-    // }
-
-    // public function upload( Request $request ) {
-    //     $request->validate( [
-    //         'quiz_file' => 'nullable|file|mimes:json',
-    //         'quiz_json' => 'nullable|string',
-    //     ] );
-
-    //     if ( $request->hasFile( 'quiz_file' ) ) {
-    //         $quizData = json_decode(
-    //             file_get_contents( $request->file( 'quiz_file' )->path() ),
-    //             true
-    //         );
-    //     } elseif ( $request->filled( 'quiz_json' ) ) {
-    //         $quizData = json_decode( $request->quiz_json, true );
-    //     } else {
-    //         return back()->withErrors( [
-    //             'error' => 'Please upload a JSON file or paste quiz JSON data.',
-    //         ] );
-    //     }
-
-    //     if ( !$quizData || !isset( $quizData['quiz']['title'] ) ) {
-    //         return back()->withErrors( [
-    //             'error' => 'Invalid quiz JSON format.',
-    //         ] );
-    //     }
-
-    //     // Duplicate quiz check
-    //     $existingQuiz = Quiz::where( 'title', $quizData['quiz']['title'] )->first();
-    //     if ( $existingQuiz ) {
-    //         return back()->withErrors( [
-    //             'error' => 'A quiz with the same title already exists.',
-    //         ] );
-    //     }
-
-    //     // Create quiz
-    //     $quiz = Quiz::create( [
-    //         'category_id'   => $quizData['quiz']['category_id'],
-    //         'title'         => $quizData['quiz']['title'],
-    //         'slug'          => Str::slug( $quizData['quiz']['title'] ),
-    //         'description'   => $quizData['quiz']['description'] ?? null,
-    //         'start_exam_at' => $quizData['quiz']['start_exam_at'] ?? null,
-    //         'end_exam_at'   => $quizData['quiz']['end_exam_at'] ?? null,
-    //     ] );
-
-    //     foreach ( $quizData['quiz']['questions'] as $questionData ) {
-    //         $question = $quiz->questions()->create( [
-    //             'question' => $questionData['question'],
-    //         ] );
-
-    //         foreach ( $questionData['answers'] as $answerData ) {
-    //             $question->answers()->create( [
-    //                 'answer'     => $answerData['answer'],
-    //                 'is_correct' => $answerData['is_correct'],
-    //             ] );
-    //         }
-    //     }
-
-    //     return redirect()->route( 'quiz.index' )
-    //         ->with( 'success', 'Quiz imported successfully.' );
-    // }
-
-    public function upload( Request $request ) {
-        $request->validate( [
-            'quiz_file' => 'nullable|file|mimes:json',
-            'quiz_json' => 'nullable|string',
-        ] );
-
-        // Read JSON
-        if ( $request->hasFile( 'quiz_file' ) ) {
-            $quizData = json_decode(
-                file_get_contents( $request->file( 'quiz_file' )->path() ),
-                true
-            );
-        } elseif ( $request->filled( 'quiz_json' ) ) {
-            $quizData = json_decode( $request->quiz_json, true );
-        } else {
-            return back()->withErrors( ['error' => 'Please upload or paste quiz JSON.'] );
-        }
-
-        // Basic structure validation
-        if (
-            !$quizData ||
-            !isset( $quizData['quiz']['title'] ) ||
-            !isset( $quizData['quiz']['category'] ) ||
-            !isset( $quizData['quiz']['questions'] )
-        ) {
-            return back()->withErrors( ['error' => 'Invalid quiz JSON structure.'] );
-        }
-
-        // Duplicate quiz check
-        if ( Quiz::where( 'title', $quizData['quiz']['title'] )->exists() ) {
-            return back()->withErrors( [
-                'error' => 'A quiz with this title already exists.',
-            ] );
-        }
-
-        DB::beginTransaction();
-
-        try {
-            // Resolve or create category
-            $categoryId = $this->resolveCategory( $quizData['quiz']['category'] );
-
-            $difficulty = Difficulty::tryFrom( strtolower( trim( $quizData['quiz']['difficulty'] ?? 'standard' ) ) );
-            if ( !$difficulty ) {
-                throw new \Exception( 'Invalid difficulty. Use one of: ' . implode( ', ', Difficulty::values() ) . '.' );
-            }
-
-            // Create quiz
-            $quiz = Quiz::create( [
-                'category_id'   => $categoryId,
-                'title'         => $quizData['quiz']['title'],
-                'slug'          => Str::slug( $quizData['quiz']['title'] ),
-                'description'   => $quizData['quiz']['description'] ?? null,
-                'difficulty'    => $difficulty,
-                'duration_minutes' => ( (int) ( $quizData['quiz']['duration_minutes'] ?? 0 ) ) ?: null,
-                'start_exam_at' => $quizData['quiz']['start_exam_at'] ?? null,
-                'end_exam_at'   => $quizData['quiz']['end_exam_at'] ?? null,
-            ] );
-
-            // Questions & answers
-            foreach ( $quizData['quiz']['questions'] as $questionData ) {
-
-                if (
-                    !isset( $questionData['question'] ) ||
-                    !isset( $questionData['answers'] ) ||
-                    !is_array( $questionData['answers'] )
-                ) {
-                    throw new \Exception( 'Invalid question format.' );
-                }
-
-                $question = $quiz->questions()->create( [
-                    'question' => $questionData['question'],
-                ] );
-
-                foreach ( $questionData['answers'] as $answerData ) {
-                    if ( !isset( $answerData['answer'], $answerData['is_correct'] ) ) {
-                        throw new \Exception( 'Invalid answer format.' );
-                    }
-
-                    $question->answers()->create( [
-                        'answer'     => $answerData['answer'],
-                        'is_correct' => (bool) $answerData['is_correct'],
-                    ] );
-                }
-            }
-
-            DB::commit();
-
-            return redirect()
-                ->route( 'quiz.index' )
-                ->with( 'success', 'Quiz imported successfully.' );
-
-        } catch ( \Exception $e ) {
-            DB::rollBack();
-
-            return back()->withErrors( [
-                'error' => $e->getMessage(),
-            ] );
-        }
+        return back()->with( 'success', "$deleted quiz(zes) deleted successfully." );
     }
 
     /**
-     * Resolve category by name or slug (case-insensitive).
-     * Auto create if not exists.
+     * Download all quizzes (or only those matching the current filters) as one JSON file.
      */
-    private function resolveCategory( string $categoryName ): int {
-        $name = trim( $categoryName );
-        $slug = Str::slug( $name );
+    public function export( Request $request ) {
+        $query    = $this->filteredQuery( $request )->orderBy( 'id' );
+        $filename = 'quizzes-' . now()->format( 'Y-m-d-His' ) . '.json';
 
-        $category = Category::whereRaw( 'LOWER(name) = ?', [strtolower( $name )] )
-            ->orWhere( 'slug', $slug )
-            ->first();
-
-        if ( $category ) {
-            return $category->id;
-        }
-
-        // Auto create category
-        $newCategory = Category::create( [
-            'name'   => $name,
-            'slug'   => $slug,
-            'status' => true,
-        ] );
-
-        return $newCategory->id;
+        return response()->streamDownload(
+            fn() => $this->transfer->exportMany( $query, function ( string $chunk ) {
+                echo $chunk;
+            } ),
+            $filename,
+            ['Content-Type' => 'application/json']
+        );
     }
 
     /**
-     * Create the questions of a quiz, inserting each question's answers in one query.
+     * Download a single quiz as a JSON file.
      */
-    private function saveQuestions( Quiz $quiz, array $questions ): void {
-        foreach ( $questions as $questionData ) {
-            $question = $quiz->questions()->create( ['question' => $questionData['text']] );
+    public function exportOne( string $id ) {
+        $quiz = Quiz::findOrFail( $id );
 
-            $answers = collect( $questionData['answers'] )->map( fn( $text, $index ) => [
-                'answer'     => $text,
-                'is_correct' => (int) $index === (int) $questionData['correct'],
-            ] );
-
-            $question->answers()->createMany( $answers->values()->all() );
-        }
+        return response()->streamDownload(
+            fn() => print( $this->transfer->exportOne( $quiz ) ),
+            $quiz->slug . '.json',
+            ['Content-Type' => 'application/json']
+        );
     }
 
-    private function activeCategories() {
-        return Category::where( 'status', true )->get( ['id', 'name'] );
+    /**
+     * Import one or many quizzes from an uploaded file or pasted JSON.
+     */
+    public function upload( ImportQuizRequest $request ) {
+        $result = $this->transfer->import( $request->payload() );
+
+        $imported = count( $result['imported'] );
+        $skipped  = $result['skipped'];
+
+        $redirect = redirect()->route( 'quiz.index' );
+
+        if ( $imported > 0 ) {
+            $redirect->with( 'success', $imported === 1
+                ? "Quiz “{$result['imported'][0]}” imported successfully."
+                : "$imported quizzes imported successfully." );
+        }
+
+        if ( $skipped ) {
+            $redirect->with( 'warning', count( $skipped ) . ' quiz(zes) skipped because the title already exists: '
+                . Str::limit( implode( ', ', $skipped ), 300 ) );
+        }
+
+        return $redirect;
+    }
+
+    /**
+     * Quizzes filtered by the list page's category and difficulty query parameters.
+     */
+    private function filteredQuery( Request $request ): Builder {
+        $difficulty = Difficulty::tryFrom( (string) $request->query( 'difficulty' ) );
+
+        return Quiz::query()
+            ->when( $request->query( 'category' ), fn( $query, $categoryId ) => $query->where( 'category_id', $categoryId ) )
+            ->when( $difficulty, fn( $query ) => $query->where( 'difficulty', $difficulty ) );
+    }
+
+    /**
+     * Every category, inactive ones included, so a quiz in an inactive category
+     * keeps its category when edited.
+     */
+    private function categories() {
+        return Category::orderByDesc( 'status' )->orderBy( 'name' )->get( ['id', 'name', 'status'] );
     }
 }

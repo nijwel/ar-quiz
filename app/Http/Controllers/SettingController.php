@@ -13,6 +13,7 @@ class SettingController extends Controller {
         return view( 'admin.settings', [
             'secondsPerQuestion' => Setting::secondsPerQuestion(),
             'maxAttempts'        => Setting::maxAttempts(),
+            'showAnswerReview'   => Setting::showAnswerReview(),
             'logoUrl'            => Setting::logoUrl(),
             'faviconUrl'         => Setting::faviconUrl(),
         ] );

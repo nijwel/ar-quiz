@@ -4,250 +4,159 @@
 
 @section('content')
     @php
-        $questionCount = $quiz->questions->count();
-        $totalSeconds = $examSeconds;
+        $formatTime = fn(int $seconds) => gmdate($seconds >= 3600 ? 'H:i:s' : 'i:s', $seconds);
+        $examRules = [
+            ['icon-[tabler--browser-x]', 'অন্য ট্যাবে গেলে বা ব্রাউজার মিনিমাইজ করলে'],
+            ['icon-[tabler--app-window]', 'অন্য উইন্ডো, অ্যাপ বা ব্রাউজারের অ্যাড্রেস বারে ক্লিক করলে'],
+            ['icon-[tabler--refresh-alert]', 'পেজ রিলোড, বন্ধ বা Back করলে'],
+            ['icon-[tabler--arrows-minimize]', 'ফুলস্ক্রিন থেকে বের হলে (Esc চাপলে)'],
+        ];
     @endphp
 
-    {{-- Start screen --}}
-    <div id="start-screen" class="grid min-h-[65vh] place-items-center">
-        <div class="relative w-full max-w-lg animate-rise overflow-hidden rounded-[2rem] glass-panel p-8 text-center text-white sm:p-10">
-            <div class="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]"></div>
-            <div class="absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-brand-600/50 blur-3xl"></div>
+    <div id="exam"
+        data-start-url="{{ route('user.quiz.start', $quiz->slug) }}"
+        data-submit-url="{{ route('user.quiz.submit') }}"
+        data-csrf="{{ csrf_token() }}"
+        data-total-questions="{{ $questionCount }}"
+        data-resume-seconds="{{ $resumeAttempt?->remainingSeconds() }}">
 
-            <div class="relative">
-                <span class="mx-auto mb-6 grid size-20 animate-float place-items-center rounded-3xl bg-volt-400 text-snow shadow-xl shadow-volt-400/20">
-                    <span class="icon-[tabler--alarm] size-10"></span>
-                </span>
-                <div class="mb-3 flex flex-wrap justify-center gap-2">
-                    <span class="badge bg-white/10 text-volt-300 ring-1 ring-white/15">{{ $quiz->category?->name }}</span>
-                    <span class="badge {{ $quiz->difficulty->badgeClass() }}"><span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }}</span>
-                    @if ($maxAttempts > 1)
-                        <span class="badge bg-white/10 text-ink-200 ring-1 ring-white/15"><span class="icon-[tabler--repeat] size-3.5"></span> Attempt {{ $attempt }}/{{ $maxAttempts }}</span>
-                    @endif
-                </div>
-                <h1 class="font-display text-3xl font-extrabold tracking-tight">{{ $quiz->title }}</h1>
-                @if ($quiz->description)
-                    <p class="mt-2 text-sm text-ink-300">{{ $quiz->description }}</p>
-                @endif
-
-                <div class="my-8 grid grid-cols-2 gap-3">
-                    <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                        <span class="icon-[tabler--list-numbers] size-5 text-volt-400"></span>
-                        <p class="mt-1 font-display text-2xl font-bold">{{ $questionCount }}</p>
-                        <p class="text-xs text-ink-400">প্রশ্ন</p>
-                    </div>
-                    <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                        <span class="icon-[tabler--hourglass] size-5 text-volt-400"></span>
-                        <p class="mt-1 font-display text-2xl font-bold">{{ gmdate($totalSeconds >= 3600 ? 'H:i:s' : 'i:s', $totalSeconds) }}</p>
-                        <p class="text-xs text-ink-400">মোট সময়</p>
-                    </div>
-                </div>
-
-                <ul class="mb-8 space-y-2 text-left text-sm text-ink-300">
-                    <li class="flex gap-2">
-                        <span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span>
-                        @if ($quiz->duration_minutes)
-                            পুরো পরীক্ষাটি {{ $quiz->duration_minutes }} মিনিটের মধ্যে শেষ করতে হবে।
-                        @else
-                            প্রতিটি প্রশ্নের জন্য {{ $secondsPerQuestion }} সেকেন্ড সময়।
-                        @endif
-                    </li>
-                    <li class="flex gap-2"><span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span> সময় শেষ হলে উত্তর অটোমেটিক জমা হবে।</li>
-                    <li class="flex gap-2"><span class="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-volt-400"></span> একবার জমা দিলে আর পরিবর্তন করা যাবে না।</li>
-                </ul>
-
-                <button id="startBtn" type="button" class="btn btn-volt btn-lg w-full">
-                    <span class="icon-[tabler--player-play-filled] size-5"></span> কুইজ শুরু করুন
-                </button>
-                <a href="{{ route('user.quiz.index') }}" class="mt-3 inline-block text-sm text-ink-400 hover:text-white">ফিরে যান</a>
-            </div>
-        </div>
-    </div>
-
-    {{-- Quiz --}}
-    <div id="quiz-content" class="hidden">
-        {{-- HUD --}}
-        <div class="sticky top-[5.25rem] z-30 mb-6">
-            <div class="overflow-hidden rounded-2xl glass-panel text-white">
-                <div class="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="truncate font-display font-bold sm:text-lg">{{ $quiz->title }}</p>
-                        <p class="hidden text-xs text-ink-400 sm:block">সময় শেষ হওয়ার আগে উত্তর জমা দিন।</p>
-                    </div>
-                    <div class="rounded-xl bg-white/10 px-3 py-1.5 text-center">
-                        <p class="text-[9px] font-bold tracking-wider text-ink-400 uppercase">Answered</p>
-                        <p class="font-display font-bold"><span id="answered-count" class="text-volt-400">0</span><span class="text-ink-400">/{{ $questionCount }}</span></p>
-                    </div>
-                    <div id="timer-box" class="rounded-xl bg-volt-400 px-3 py-1.5 text-center text-snow transition-colors">
-                        <p class="text-[9px] font-bold tracking-wider uppercase opacity-70">Time Left</p>
-                        <p id="timer" class="font-display font-extrabold tabular-nums">00:00</p>
-                    </div>
-                    <a href="{{ route('home') }}" onclick="return confirm('আপনি কি নিশ্চিত?')"
-                        class="grid size-10 shrink-0 place-items-center rounded-xl text-ink-400 transition hover:bg-rose-500/15 hover:text-rose-400" title="Cancel">
-                        <span class="icon-[tabler--x] size-5"></span>
-                    </a>
-                </div>
-                <div class="h-1 bg-white/10">
-                    <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-volt-400 to-emerald-400 transition-all duration-500"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-[1fr_15rem]">
-            <form action="{{ route('user.quiz.submit') }}" method="POST" id="quizForm" class="space-y-5">
-                @csrf
-                <input type="hidden" name="quiz_id" value="{{ $quiz->id }}">
-
-                @foreach ($quiz->questions as $key => $question)
-                    <div id="q-{{ $question->id }}" class="card scroll-mt-44 p-5 sm:p-6">
-                        <input type="hidden" name="question_id[]" value="{{ $question->id }}">
-                        <div class="mb-5 flex gap-3">
-                            <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 font-display text-sm font-bold text-volt-400">
-                                {{ str_pad($key + 1, 2, '0', STR_PAD_LEFT) }}
-                            </span>
-                            <h2 class="pt-1 text-base font-semibold text-white sm:text-lg">{{ $question->question }}</h2>
-                        </div>
-                        <div class="grid gap-2.5 sm:grid-cols-2">
-                            @foreach ($question->answers as $answer)
-                                <label
-                                    class="group flex cursor-pointer items-center gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10 transition hover:bg-white/10 hover:ring-brand-500/40 has-checked:bg-brand-500/10 has-checked:ring-2 has-checked:ring-brand-500">
-                                    <input type="radio" name="answers[{{ $question->id }}]" value="{{ $answer->id }}"
-                                        data-question="{{ $question->id }}" class="peer sr-only">
-                                    <span
-                                        class="grid size-8 shrink-0 place-items-center rounded-lg bg-white/5 text-sm font-bold text-ink-400 ring-1 ring-white/10 transition peer-checked:bg-brand-600 peer-checked:text-snow peer-checked:ring-brand-600">
-                                        {{ chr(64 + $loop->iteration) }}
-                                    </span>
-                                    <span class="text-sm font-medium text-ink-200 peer-checked:text-brand-300">{{ $answer->answer }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-                @endforeach
-
-                <div class="card flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
-                    <div class="flex-1">
-                        <p class="font-display text-lg font-bold text-white">সব উত্তর দেওয়া শেষ?</p>
-                        <p class="text-sm text-ink-400">জমা দেওয়ার আগে একবার চেক করে নিন।</p>
-                    </div>
-                    <button class="btn btn-primary btn-lg w-full sm:w-auto" type="submit">
-                        <span class="icon-[tabler--send] size-5"></span> Submit Answers
+        @if ($resumeAttempt)
+            {{-- Resume screen: the attempt is already running on the server --}}
+            <div data-screen="resume" class="grid min-h-[65vh] place-items-center">
+                <div class="relative w-full max-w-lg animate-rise overflow-hidden rounded-[2rem] glass-panel p-8 text-center text-white sm:p-10">
+                    <span class="mx-auto mb-6 grid size-20 place-items-center rounded-3xl bg-amber-500 text-snow shadow-xl shadow-amber-500/20">
+                        <span class="icon-[tabler--player-pause-filled] size-10"></span>
+                    </span>
+                    <h1 class="font-display text-2xl font-extrabold">{{ $quiz->title }}</h1>
+                    <p class="mt-2 text-sm text-ink-300">আপনার পরীক্ষা চলমান আছে। টাইমার থেমে নেই।</p>
+                    <p class="my-6 font-display text-4xl font-extrabold text-volt-400">{{ $formatTime($resumeAttempt->remainingSeconds()) }}</p>
+                    <button data-action="resume" type="button" class="btn btn-volt btn-lg w-full">
+                        <span class="icon-[tabler--player-play-filled] size-5"></span> পরীক্ষা চালিয়ে যান
                     </button>
+                    <p class="mt-4 text-xs text-ink-400">আবার ট্যাব বা উইন্ডো পরিবর্তন করলে পরীক্ষা জমা হয়ে যাবে।</p>
                 </div>
-            </form>
+            </div>
+        @else
+            {{-- Start screen --}}
+            <div data-screen="start" class="grid min-h-[65vh] place-items-center">
+                <div class="relative w-full max-w-xl animate-rise overflow-hidden rounded-[2rem] glass-panel p-6 text-white sm:p-10">
+                    <div class="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]"></div>
+                    <div class="absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-brand-600/50 blur-3xl"></div>
 
-            {{-- Navigator --}}
-            <aside class="hidden lg:block">
-                <div class="card sticky top-52 p-5">
-                    <p class="mb-3 text-xs font-bold tracking-wider text-ink-400 uppercase">Questions</p>
-                    <div class="grid grid-cols-5 gap-2">
-                        @foreach ($quiz->questions as $key => $question)
-                            <a href="#q-{{ $question->id }}" data-nav="{{ $question->id }}"
-                                class="grid aspect-square place-items-center rounded-lg bg-white/5 text-xs font-bold text-ink-400 ring-1 ring-white/10 transition hover:ring-brand-400">
-                                {{ $key + 1 }}
-                            </a>
-                        @endforeach
-                    </div>
-                    <div class="mt-4 flex items-center gap-4 text-xs text-ink-400">
-                        <span class="flex items-center gap-1.5"><span class="size-3 rounded bg-brand-600"></span> Answered</span>
-                        <span class="flex items-center gap-1.5"><span class="size-3 rounded bg-white/10 ring-1 ring-white/10"></span> Left</span>
+                    <div class="relative">
+                        <div class="text-center">
+                            <div class="mb-3 flex flex-wrap justify-center gap-2">
+                                <span class="badge bg-white/10 text-volt-300 ring-1 ring-white/15">{{ $quiz->category?->name }}</span>
+                                <span class="badge {{ $quiz->difficulty->badgeClass() }}"><span class="{{ $quiz->difficulty->icon() }} size-3.5"></span> {{ $quiz->difficulty->label() }}</span>
+                                @if ($maxAttempts > 1)
+                                    <span class="badge bg-white/10 text-ink-200 ring-1 ring-white/15"><span class="icon-[tabler--repeat] size-3.5"></span> Attempt {{ $attemptNumber }}/{{ $maxAttempts }}</span>
+                                @endif
+                            </div>
+                            <h1 class="font-display text-3xl font-extrabold tracking-tight">{{ $quiz->title }}</h1>
+                            @if ($quiz->description)
+                                <p class="mt-2 text-sm text-ink-300">{{ $quiz->description }}</p>
+                            @endif
+                        </div>
+
+                        <div class="my-6 grid grid-cols-2 gap-3 text-center">
+                            <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                                <span class="icon-[tabler--list-numbers] size-5 text-volt-400"></span>
+                                <p class="mt-1 font-display text-2xl font-bold">{{ $questionCount }}</p>
+                                <p class="text-xs text-ink-400">প্রশ্ন</p>
+                            </div>
+                            <div class="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                                <span class="icon-[tabler--hourglass] size-5 text-volt-400"></span>
+                                <p class="mt-1 font-display text-2xl font-bold">{{ $formatTime($examSeconds) }}</p>
+                                <p class="text-xs text-ink-400">
+                                    {{ $quiz->duration_minutes ? 'মোট সময়' : "প্রতি প্রশ্নে {$secondsPerQuestion} সেকেন্ড" }}
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- Anti-cheat rules --}}
+                        <div class="rounded-2xl bg-rose-500/10 p-4 ring-1 ring-rose-500/30 sm:p-5">
+                            <p class="mb-3 flex items-center gap-2 font-display font-bold text-rose-300">
+                                <span class="icon-[tabler--shield-lock] size-5"></span> পরীক্ষার নিয়ম — সাবধানে পড়ুন
+                            </p>
+                            <p class="mb-3 text-sm text-ink-200">
+                                পরীক্ষা শুরু হলে নিচের যেকোনো কাজ করলে আপনার পরীক্ষা <b class="text-rose-300">সাথে সাথে স্বয়ংক্রিয়ভাবে জমা</b> হয়ে যাবে,
+                                এবং তখন পর্যন্ত দেওয়া উত্তরগুলোই গণনা হবে:
+                            </p>
+                            <ul class="space-y-2 text-sm text-ink-200">
+                                @foreach ($examRules as [$icon, $rule])
+                                    <li class="flex gap-2"><span class="{{ $icon }} mt-0.5 size-4 shrink-0 text-rose-400"></span> {{ $rule }}</li>
+                                @endforeach
+                            </ul>
+                            <p class="mt-3 border-t border-white/10 pt-3 text-xs text-ink-400">
+                                পরীক্ষা ফুলস্ক্রিনে চলবে। কপি, পেস্ট, রাইট-ক্লিক ও কিবোর্ড শর্টকাট বন্ধ থাকবে। ফোনে কল বা নোটিফিকেশনে গেলেও পরীক্ষা জমা হয়ে যেতে পারে।
+                            </p>
+                        </div>
+
+                        <label class="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl bg-white/5 p-4 text-sm ring-1 ring-white/10 transition has-checked:ring-volt-400">
+                            <input data-field="agree" type="checkbox" class="mt-0.5 size-4 shrink-0 accent-brand-600">
+                            <span class="text-ink-200">আমি নিয়মগুলো পড়েছি এবং বুঝেছি। পরীক্ষা চলাকালীন আমি এই পেজ ছেড়ে যাব না।</span>
+                        </label>
+
+                        <p data-field="start-error" class="mt-3 hidden text-center text-sm font-medium text-rose-400"></p>
+
+                        <button data-action="start" type="button" class="btn btn-volt btn-lg mt-5 w-full" disabled>
+                            <span class="icon-[tabler--player-play-filled] size-5"></span> পরীক্ষা শুরু করুন
+                        </button>
+                        <a href="{{ route('user.quiz.index') }}" class="mt-3 block text-center text-sm text-ink-400 hover:text-white">ফিরে যান</a>
                     </div>
                 </div>
-            </aside>
+            </div>
+        @endif
+
+        {{-- Running exam --}}
+        <div data-screen="exam" class="hidden">
+            <div class="sticky top-3 z-30 mb-6">
+                <div class="overflow-hidden rounded-2xl glass-panel text-white">
+                    <div class="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-display font-bold sm:text-lg">{{ $quiz->title }}</p>
+                            <p class="hidden items-center gap-1 text-xs text-rose-300 sm:flex">
+                                <span class="icon-[tabler--shield-lock] size-3.5"></span> পেজ ছেড়ে গেলে পরীক্ষা জমা হয়ে যাবে
+                            </p>
+                        </div>
+                        <div class="rounded-xl bg-white/10 px-3 py-1.5 text-center">
+                            <p class="text-[9px] font-bold tracking-wider text-ink-400 uppercase">Answered</p>
+                            <p class="font-display font-bold"><span data-field="answered" class="text-volt-400">0</span><span class="text-ink-400">/{{ $questionCount }}</span></p>
+                        </div>
+                        <div data-field="timer-box" class="rounded-xl bg-volt-400 px-3 py-1.5 text-center text-snow transition-colors">
+                            <p class="text-[9px] font-bold tracking-wider uppercase opacity-70">Time Left</p>
+                            <p data-field="timer" class="font-display font-extrabold tabular-nums">00:00</p>
+                        </div>
+                    </div>
+                    <div class="h-1 bg-white/10">
+                        <div data-field="progress" class="h-full w-0 bg-gradient-to-r from-volt-400 to-emerald-400 transition-all duration-500"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div data-field="questions" class="select-none">{!! $questionsHtml !!}</div>
+        </div>
+
+        {{-- Confirm manual submit (an in-page dialog; native confirm() would blur the window) --}}
+        <div data-screen="confirm" class="fixed inset-0 z-50 hidden place-items-center bg-black/70 p-4 backdrop-blur-sm">
+            <div class="w-full max-w-sm rounded-3xl bg-ink-950/90 p-6 text-center shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+                <span class="icon-[tabler--send] mx-auto mb-3 block size-10 text-volt-400"></span>
+                <p class="font-display text-lg font-bold text-white">উত্তর জমা দিবেন?</p>
+                <p data-field="confirm-text" class="mt-1 text-sm text-ink-400"></p>
+                <div class="mt-6 grid grid-cols-2 gap-2">
+                    <button data-action="cancel-submit" type="button" class="btn btn-ghost">ফিরে যান</button>
+                    <button data-action="confirm-submit" type="button" class="btn btn-primary">জমা দিন</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Submitting overlay --}}
+        <div data-screen="submitting" class="fixed inset-0 z-50 hidden place-items-center bg-black/80 p-4 backdrop-blur-md">
+            <div class="max-w-sm text-center">
+                <span class="mx-auto mb-4 block size-12 animate-spin rounded-full border-4 border-white/20 border-t-volt-400"></span>
+                <p data-field="submitting-title" class="font-display text-xl font-bold text-white">উত্তর জমা হচ্ছে…</p>
+                <p data-field="submitting-text" class="mt-2 text-sm text-ink-300"></p>
+            </div>
         </div>
     </div>
 @endsection
-
-@push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const totalQuestions = {{ $questionCount }};
-            const totalTimeInSeconds = {{ $totalSeconds }};
-            const storageKey = 'quiz_timer_{{ $quiz->id }}_{{ $attempt }}';
-
-            const startBtn = document.getElementById('startBtn');
-            const startScreen = document.getElementById('start-screen');
-            const quizContent = document.getElementById('quiz-content');
-            const timerDisplay = document.getElementById('timer');
-            const timerBox = document.getElementById('timer-box');
-            const quizForm = document.getElementById('quizForm');
-            const answeredDisplay = document.getElementById('answered-count');
-            const progressBar = document.getElementById('progress-bar');
-            const radios = quizForm.querySelectorAll('input[type="radio"]');
-
-            let timeRemaining;
-            let timerInterval;
-            let submitting = false;
-
-            const savedTime = localStorage.getItem(storageKey);
-            if (savedTime) {
-                initQuiz(parseInt(savedTime));
-            }
-
-            startBtn.addEventListener('click', () => initQuiz(totalTimeInSeconds));
-
-            function initQuiz(startTime) {
-                timeRemaining = startTime;
-                startScreen.classList.add('hidden');
-                quizContent.classList.remove('hidden');
-                timerInterval = setInterval(updateTimer, 1000);
-                updateTimer();
-            }
-
-            function updateTimer() {
-                const minutes = Math.floor(timeRemaining / 60);
-                const seconds = timeRemaining % 60;
-                timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-                if (timeRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    handleTimeUp();
-                } else {
-                    timeRemaining--;
-                    localStorage.setItem(storageKey, timeRemaining);
-                }
-
-                // ১ মিনিটের কম সময় থাকলে টাইমার লাল হয়ে যাবে
-                if (timeRemaining < 60) {
-                    timerBox.classList.remove('bg-volt-400', 'text-snow');
-                    timerBox.classList.add('bg-white', 'text-volt-500', 'animate-pulse');
-                }
-            }
-
-            function handleTimeUp() {
-                localStorage.removeItem(storageKey);
-                submitting = true;
-                alert('সময় শেষ! আপনার উত্তরগুলো অটোমেটিক সাবমিট হচ্ছে।');
-                quizForm.submit();
-            }
-
-            quizForm.addEventListener('submit', () => {
-                submitting = true;
-                localStorage.removeItem(storageKey);
-            });
-
-            window.addEventListener('beforeunload', (e) => {
-                if (!submitting && timeRemaining > 0 && !quizContent.classList.contains('hidden')) {
-                    e.preventDefault();
-                    e.returnValue = 'আপনি কি কুইজ ছেড়ে চলে যেতে চান?';
-                }
-            });
-
-            function updateAnsweredCount() {
-                const answered = new Set();
-                radios.forEach(radio => radio.checked && answered.add(radio.dataset.question));
-
-                answeredDisplay.textContent = answered.size;
-                progressBar.style.width = `${(answered.size / (totalQuestions || 1)) * 100}%`;
-
-                document.querySelectorAll('[data-nav]').forEach(link => {
-                    const done = answered.has(link.dataset.nav);
-                    ['bg-brand-600', 'text-snow', 'ring-brand-600'].forEach(c => link.classList.toggle(c, done));
-                    ['bg-white/5', 'text-ink-400', 'ring-white/10'].forEach(c => link.classList.toggle(c, !done));
-                });
-            }
-
-            radios.forEach(radio => radio.addEventListener('change', updateAnsweredCount));
-            updateAnsweredCount();
-        });
-    </script>
-@endpush

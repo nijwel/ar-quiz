@@ -47,4 +47,17 @@ class QuizRequest extends FormRequest {
             'end_exam_at'      => $this->input( 'end_exam_at' ),
         ];
     }
+
+    /**
+     * The submitted questions in the shape QuizTransfer::saveQuestions() expects.
+     */
+    public function questionsData(): array {
+        return collect( $this->input( 'questions', [] ) )->values()->map( fn( $question ) => [
+            'question' => $question['text'],
+            'answers'  => collect( $question['answers'] )->values()->map( fn( $text, $index ) => [
+                'answer'     => $text,
+                'is_correct' => $index === (int) $question['correct'],
+            ] )->all(),
+        ] )->all();
+    }
 }

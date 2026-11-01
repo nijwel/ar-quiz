@@ -11,7 +11,7 @@
 <div class="relative min-h-full overflow-x-clip">
     <div class="pointer-events-none absolute inset-x-0 top-0 -z-0 h-80 bg-dots [mask-image:linear-gradient(to_bottom,black,transparent)]"></div>
 
-    <header class="sticky top-0 z-40 px-3 pt-3 sm:px-6">
+    <header data-exam-hide class="sticky top-0 z-40 px-3 pt-3 sm:px-6">
         <div
             class="mx-auto flex h-16 max-w-6xl items-center gap-4 rounded-2xl bg-black/40 px-3 shadow-[0_8px_30px_-12px_rgb(0_0_0/0.6)] ring-1 ring-white/10 backdrop-blur-xl sm:px-4">
             <a href="{{ route('home') }}" class="flex items-center gap-2.5">
@@ -65,7 +65,7 @@
     </main>
 
     {{-- Mobile dock --}}
-    <nav
+    <nav data-exam-hide
         class="fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-2xl bg-black/60 p-1.5 shadow-2xl ring-1 ring-white/10 backdrop-blur md:hidden">
         @foreach ([...$studentNav, ['Profile', route('user.profile'), 'user/profile*', 'icon-[tabler--user-circle]']] as [$label, $href, $pattern, $icon])
             @php $active = request()->is($pattern); @endphp

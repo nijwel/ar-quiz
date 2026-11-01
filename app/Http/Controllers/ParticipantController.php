@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Quiz;
 use App\Models\Setting;
 use App\Models\User;
-use App\Models\UserAnswer;
+use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ParticipantController extends Controller {
     /**
@@ -15,22 +14,24 @@ class ParticipantController extends Controller {
      */
     public function index() {
         $participants = User::whereType( 'user' )
-            ->withCount( ['quizResults' => fn( $query ) => $query->latestAttempt()] )
-            ->withCount( ['userAnswers as quizzes_attempted_count' => function ( $query ) {
-                $query->select( DB::raw( 'count(distinct quiz_id)' ) );
-            }] )
+            ->withSum( ['quizAttempts as total_marks' => fn( $query ) => $query->latestSubmitted()], 'correct_count' )
+            ->withCount( ['quizAttempts as quizzes_attempted_count' => fn( $query ) => $query->latestSubmitted()] )
             ->paginate( 15 );
         return view( 'admin.participants.index', compact( 'participants' ) );
     }
 
     public function myExams() {
-        $latestAttempts = UserAnswer::latestAttemptSummary( auth()->id() );
+        $latestAttempts = QuizAttempt::latestSummary( auth()->id() );
         $maxAttempts    = Setting::maxAttempts();
 
-        $quizzes = Quiz::with( 'category:id,name' )
+        // Keep the summary's order: the most recently taken exam first
+        $position = $latestAttempts->keys()->flip();
+        $quizzes  = Quiz::with( 'category:id,name' )
             ->withCount( 'questions' )
             ->whereIn( 'id', $latestAttempts->keys() )
-            ->get();
+            ->get()
+            ->sortBy( fn( Quiz $quiz ) => $position[$quiz->id] )
+            ->values();
 
         $quizResults = $quizzes->mapWithKeys( fn( Quiz $quiz ) => [
             $quiz->id => $quiz->resultFor( $latestAttempts->get( $quiz->id ), $maxAttempts ),
@@ -63,19 +64,15 @@ class ParticipantController extends Controller {
     public function show( string $id ) {
         $participant = User::findOrFail( $id );
 
-        // Each quiz with only this student's latest attempt
-        $quizzes = Quiz::with( [
-            'category:id,name',
-            'userAnswers' => fn( $query ) => $query
-                ->where( 'user_id', $participant->id )
-                ->latestAttempt()
-                ->select( 'id', 'quiz_id', 'user_id', 'attempt', 'status' ),
-        ] )
+        // Latest submitted attempt of every quiz this student took
+        $latestAttempts = QuizAttempt::latestSummary( $participant->id );
+
+        $quizzes = Quiz::with( 'category:id,name' )
             ->withCount( 'questions' )
-            ->whereHas( 'userAnswers', fn( $query ) => $query->where( 'user_id', $participant->id ) )
+            ->whereIn( 'id', $latestAttempts->keys() )
             ->get();
 
-        return view( 'admin.participants.view', compact( 'participant', 'quizzes' ) );
+        return view( 'admin.participants.view', compact( 'participant', 'quizzes', 'latestAttempts' ) );
     }
 
     /**

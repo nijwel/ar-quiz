@@ -70,7 +70,7 @@
     </form>
 
     <form action="{{ route('admin.settings.update') }}" method="POST"
-        x-data="{ seconds: {{ old('seconds_per_question', $secondsPerQuestion) }}, attempts: {{ old('max_attempts', $maxAttempts) }} }"
+        x-data="{ seconds: {{ old('seconds_per_question', $secondsPerQuestion) }}, attempts: {{ old('max_attempts', $maxAttempts) }}, review: {{ old('show_answer_review', $showAnswerReview) ? 'true' : 'false' }} }"
         class="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
         @csrf
         @method('PUT')
@@ -149,6 +149,28 @@
                     <p class="mt-2 text-xs text-ink-500">স্কোর ও লিডারবোর্ডে প্রতিটি পরীক্ষার সর্বশেষ চেষ্টাটি গণনা করা হবে।</p>
                 </div>
             </div>
+        </div>
+
+        {{-- Answer review --}}
+        <div class="card flex flex-col gap-5 p-6 sm:flex-row sm:items-center md:col-span-2">
+            <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25">
+                <span class="icon-[tabler--list-check] size-6"></span>
+            </span>
+            <div class="flex-1">
+                <h2 class="font-display text-lg font-bold text-white">Answer Review</h2>
+                <p class="text-sm text-ink-400">পরীক্ষা শেষে স্টুডেন্ট প্রতিটি প্রশ্নের সঠিক উত্তর দেখতে পাবে কি না</p>
+                <p class="mt-1 text-xs" :class="review ? 'text-emerald-400' : 'text-amber-400'"
+                    x-text="review ? 'চালু: রেজাল্ট পেজে প্রশ্ন, স্টুডেন্টের উত্তর ও সঠিক উত্তর দেখাবে।' : 'বন্ধ: শুধু স্কোর দেখাবে, সঠিক উত্তর লুকানো থাকবে।'"></p>
+            </div>
+
+            <input type="hidden" name="show_answer_review" :value="review ? 1 : 0">
+            <button type="button" role="switch" :aria-checked="review" @click="review = !review"
+                :class="review ? 'bg-emerald-500' : 'bg-white/15'"
+                class="relative h-8 w-14 shrink-0 rounded-full transition-colors">
+                <span :class="review ? 'translate-x-6' : 'translate-x-0'"
+                    class="absolute top-1 left-1 size-6 rounded-full bg-snow shadow transition-transform"></span>
+                <span class="sr-only">Show answer review</span>
+            </button>
         </div>
 
         <div class="flex justify-end md:col-span-2">

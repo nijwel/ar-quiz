@@ -15,6 +15,7 @@ class Setting extends Model {
     public const DEFAULTS = [
         'seconds_per_question' => 45,
         'max_attempts'         => 1,
+        'show_answer_review'   => 1,
     ];
 
     private const CACHE_KEY = 'app_settings';
@@ -41,6 +42,11 @@ class Setting extends Model {
 
     public static function maxAttempts(): int {
         return max( 1, (int) self::get( 'max_attempts' ) );
+    }
+
+    /** Whether students may see the correct answers after submitting. */
+    public static function showAnswerReview(): bool {
+        return (bool) self::get( 'show_answer_review' );
     }
 
     /** Public URL of the uploaded logo, or null to use the default mark. */
