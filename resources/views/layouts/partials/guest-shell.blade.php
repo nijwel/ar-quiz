@@ -6,9 +6,7 @@
         <div class="absolute -bottom-40 -left-20 size-96 rounded-full bg-volt-400/15 blur-3xl"></div>
 
         <a href="{{ route('login') }}" class="relative flex items-center gap-3">
-            <span class="grid size-11 place-items-center rounded-2xl bg-volt-400 text-snow">
-                <span class="icon-[tabler--bolt-filled] size-6"></span>
-            </span>
+            <x-brand-mark size="size-11" icon-size="size-6" class="rounded-2xl" tone="bg-volt-400" />
             <span class="font-display text-xl font-bold">{{ config('app.name', 'QuizArena') }}</span>
         </a>
 
@@ -53,9 +51,7 @@
         </div>
         <div class="relative w-full max-w-md animate-rise">
             <a href="{{ route('login') }}" class="mb-10 flex items-center gap-2.5 lg:hidden">
-                <span class="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-800 text-snow shadow-lg shadow-brand-600/40">
-                    <span class="icon-[tabler--bolt-filled] size-5"></span>
-                </span>
+                <x-brand-mark />
                 <span class="font-display text-lg font-bold text-white">{{ config('app.name', 'QuizArena') }}</span>
             </a>
             @yield('content')

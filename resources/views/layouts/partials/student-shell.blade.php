@@ -15,9 +15,7 @@
         <div
             class="mx-auto flex h-16 max-w-6xl items-center gap-4 rounded-2xl bg-black/40 px-3 shadow-[0_8px_30px_-12px_rgb(0_0_0/0.6)] ring-1 ring-white/10 backdrop-blur-xl sm:px-4">
             <a href="{{ route('home') }}" class="flex items-center gap-2.5">
-                <span class="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-800 text-snow shadow-lg shadow-brand-600/40">
-                    <span class="icon-[tabler--bolt-filled] size-5"></span>
-                </span>
+                <x-brand-mark />
                 <span class="font-display text-lg font-bold text-white">{{ config('app.name', 'QuizArena') }}</span>
             </a>
 

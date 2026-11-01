@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#060608">
+    <link rel="icon" href="{{ $brandFaviconUrl ?? asset('favicon.ico') }}">
 
     <script>
         // Apply saved theme before paint to avoid a flash

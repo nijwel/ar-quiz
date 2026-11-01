@@ -31,9 +31,7 @@
         <div class="pointer-events-none absolute -right-24 bottom-10 size-56 rounded-full bg-volt-400/10 blur-3xl"></div>
 
         <a href="{{ url('/admin/home') }}" class="relative mb-8 flex items-center gap-3 px-2">
-            <span class="grid size-10 place-items-center rounded-2xl bg-volt-400 text-snow shadow-lg shadow-volt-400/20">
-                <span class="icon-[tabler--bolt-filled] size-5"></span>
-            </span>
+            <x-brand-mark class="rounded-2xl" tone="bg-volt-400 shadow-lg shadow-volt-400/20" />
             <span>
                 <span class="block font-display text-lg leading-none font-bold">{{ config('app.name', 'QuizArena') }}</span>
                 <span class="text-[11px] font-semibold tracking-[0.2em] text-ink-400 uppercase">Admin Studio</span>

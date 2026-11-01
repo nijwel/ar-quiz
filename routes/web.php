@@ -65,6 +65,7 @@ Route::prefix( 'admin' )->middleware( ['auth', 'user-access:admin'] )->group( fu
 
     Route::get( '/settings', [SettingController::class, 'index'] )->name( 'admin.settings' );
     Route::put( '/settings', [SettingController::class, 'update'] )->name( 'admin.settings.update' );
+    Route::put( '/settings/branding', [SettingController::class, 'updateBranding'] )->name( 'admin.settings.branding' );
 
     Route::prefix( 'participants' )->group( function () {
         Route::get( '/', [ParticipantController::class, 'index'] )->name( 'participant.index' );

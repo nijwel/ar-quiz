@@ -42,4 +42,21 @@ class Setting extends Model {
     public static function maxAttempts(): int {
         return max( 1, (int) self::get( 'max_attempts' ) );
     }
+
+    /** Public URL of the uploaded logo, or null to use the default mark. */
+    public static function logoUrl(): ?string {
+        return self::publicFileUrl( 'logo_path' );
+    }
+
+    /** Public URL of the uploaded favicon, or null to use public/favicon.ico. */
+    public static function faviconUrl(): ?string {
+        return self::publicFileUrl( 'favicon_path' );
+    }
+
+    private static function publicFileUrl( string $key ): ?string {
+        $path = self::get( $key );
+
+        // asset() follows the current host, so links work whatever APP_URL says
+        return $path ? asset( 'storage/' . $path ) : null;
+    }
 }
