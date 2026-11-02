@@ -20,6 +20,10 @@ use Illuminate\Support\Str;
  *   "meta": { "category": "Islamic", "title": "ইসলামিক কুইজ — {level} পরীক্ষা {number}",
  *             "description": "{level} স্তরের ... {count}টি প্রশ্ন", "bangla_numbers": true }
  * {level} becomes the Bangla level name when bangla_numbers is true, otherwise the English one.
+ * Other meta options:
+ *   "category_slug": "general-knowledge"  add to an existing category from a differently named file
+ *   "slug_prefix": "general-knowledge-bn" keep exam slugs apart from the category's other exams
+ *   "unique": true                        no question repeats across exams (needs 5 x 25 per level)
  *
  * Each exam draws QUESTIONS_PER_EXAM questions from its level's bank, so exams of the
  * same level overlap but are never identical. Existing exams (same title) are skipped,
@@ -35,9 +39,9 @@ class DemoQuizSeeder extends Seeder {
         $categories = Category::all()->keyBy( 'slug' );
 
         foreach ( glob( database_path( 'seeders/data/questions/*.json' ) ) as $file ) {
-            $slug = basename( $file, '.json' );
             $bank = json_decode( file_get_contents( $file ), true, flags: JSON_THROW_ON_ERROR );
             $meta = $bank['meta'] ?? [];
+            $slug = $meta['category_slug'] ?? basename( $file, '.json' );
 
             $category = $categories->get( $slug )
                 ?? ( isset( $meta['category'] )
@@ -49,16 +53,24 @@ class DemoQuizSeeder extends Seeder {
                 continue;
             }
 
+            $unique = (bool) ( $meta['unique'] ?? false );
+            $needed = $unique ? self::EXAMS_PER_LEVEL * self::QUESTIONS_PER_EXAM : self::QUESTIONS_PER_EXAM;
+
             foreach ( Difficulty::cases() as $level ) {
                 $questions = $bank[$level->value] ?? [];
 
-                if ( count( $questions ) < self::QUESTIONS_PER_EXAM ) {
-                    $this->command?->warn( "Skipping {$category->name} / {$level->label()}: fewer than " . self::QUESTIONS_PER_EXAM . ' questions.' );
+                if ( count( $questions ) < $needed ) {
+                    $this->command?->warn( "Skipping {$category->name} / {$level->label()}: needs at least $needed questions, has " . count( $questions ) . '.' );
                     continue;
                 }
 
+                // Unique mode: shuffle the bank once and give each exam its own slice
+                $slices = $unique
+                    ? array_chunk( $this->shuffled( $questions, seed: basename( $file ) . $level->value ), self::QUESTIONS_PER_EXAM )
+                    : [];
+
                 for ( $number = 1; $number <= self::EXAMS_PER_LEVEL; $number++ ) {
-                    $this->createExam( $category, $level, $number, $questions, $meta );
+                    $this->createExam( $category, $level, $number, $questions, $meta, $slices[$number - 1] ?? null );
                 }
             }
 
@@ -66,7 +78,10 @@ class DemoQuizSeeder extends Seeder {
         }
     }
 
-    private function createExam( Category $category, Difficulty $level, int $number, array $bank, array $meta ): void {
+    /**
+     * @param  array|null  $picked  The exam's questions in unique mode; otherwise picked at random from $bank
+     */
+    private function createExam( Category $category, Difficulty $level, int $number, array $bank, array $meta, ?array $picked = null ): void {
         $bangla       = (bool) ( $meta['bangla_numbers'] ?? false );
         $placeholders = [
             '{level}'  => $bangla ? $level->banglaLabel() : $level->label(),
@@ -88,15 +103,15 @@ class DemoQuizSeeder extends Seeder {
 
         // A fixed seed per exam keeps the question picks and option order stable between runs
         mt_srand( crc32( $title ) );
-        $picked = $this->shuffled( $bank );
-        $picked = array_slice( $picked, 0, self::QUESTIONS_PER_EXAM );
+        $picked ??= array_slice( $this->shuffled( $bank ), 0, self::QUESTIONS_PER_EXAM );
+        $slugPrefix = $meta['slug_prefix'] ?? $category->slug;
 
-        DB::transaction( function () use ( $category, $level, $number, $title, $description, $picked ) {
+        DB::transaction( function () use ( $category, $level, $number, $title, $description, $picked, $slugPrefix ) {
             $quiz = Quiz::create( [
                 'category_id' => $category->id,
                 'title'       => $title,
                 // Built from ASCII parts so localized (e.g. Bangla) titles still get a readable slug
-                'slug'        => Str::slug( "{$category->slug} {$level->value} exam {$number}" ),
+                'slug'        => Str::slug( "{$slugPrefix} {$level->value} exam {$number}" ),
                 'description' => $description,
                 'difficulty'  => $level,
             ] );
@@ -136,9 +151,13 @@ class DemoQuizSeeder extends Seeder {
     }
 
     /**
-     * Shuffle using mt_rand so results follow the seed set in createExam().
+     * Shuffle using mt_rand, seeded either here or in createExam(), so results are the same on every run.
      */
-    private function shuffled( array $items ): array {
+    private function shuffled( array $items, ?string $seed = null ): array {
+        if ( $seed !== null ) {
+            mt_srand( crc32( $seed ) );
+        }
+
         for ( $i = count( $items ) - 1; $i > 0; $i-- ) {
             $j = mt_rand( 0, $i );
             [$items[$i], $items[$j]] = [$items[$j], $items[$i]];
