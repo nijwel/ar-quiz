@@ -34,6 +34,7 @@ class QuizController extends Controller {
             ->with( 'category:id,name' )
             ->withCount( 'questions' )
             ->latest()
+            ->latest( 'id' ) // Tie-breaker: many quizzes share a created_at, which made pages overlap
             ->paginate( $perPage );
 
         return view( 'admin.quiz.index', [
@@ -49,7 +50,7 @@ class QuizController extends Controller {
      */
     public function create() {
         return view( 'admin.quiz.create', [
-            'categories'         => $this->categories(),
+            'categories'         => $this->categoryOptions(),
             'secondsPerQuestion' => Setting::secondsPerQuestion(),
         ] );
     }
@@ -78,7 +79,7 @@ class QuizController extends Controller {
 
         return view( 'admin.quiz.edit', [
             'quiz'               => $quiz,
-            'categories'         => $this->categories(),
+            'categories'         => $this->categoryOptions(),
             'secondsPerQuestion' => Setting::secondsPerQuestion(),
         ] );
     }
@@ -199,7 +200,10 @@ class QuizController extends Controller {
         $difficulty = Difficulty::tryFrom( (string) $request->query( 'difficulty' ) );
 
         return Quiz::query()
-            ->when( $request->query( 'category' ), fn( $query, $categoryId ) => $query->where( 'category_id', $categoryId ) )
+            // A group (e.g. Programming) matches the quizzes of all its sub-categories
+            ->when( $request->query( 'category' ), fn( $query, $categoryId ) => $query->whereIn( 'category_id',
+                Category::whereKey( $categoryId )->orWhere( 'parent_id', $categoryId )->select( 'id' )
+            ) )
             ->when( $difficulty, fn( $query ) => $query->where( 'difficulty', $difficulty ) );
     }
 
@@ -209,5 +213,17 @@ class QuizController extends Controller {
      */
     private function categories() {
         return Category::orderByDesc( 'status' )->orderBy( 'name' )->get( ['id', 'name', 'status'] );
+    }
+
+    /**
+     * Options for the quiz form: stand-alone categories and groups with their
+     * sub-categories. A group itself is not selectable, only what is inside it.
+     */
+    private function categoryOptions() {
+        return Category::topLevel()
+            ->with( ['children' => fn( $query ) => $query->orderByDesc( 'status' )->orderBy( 'name' )->select( 'id', 'parent_id', 'name', 'status' )] )
+            ->orderByDesc( 'status' )
+            ->orderBy( 'name' )
+            ->get( ['id', 'name', 'status'] );
     }
 }

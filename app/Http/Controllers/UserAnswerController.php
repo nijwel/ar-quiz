@@ -18,6 +18,9 @@ class UserAnswerController extends Controller {
     /** Seconds after the deadline that a submission still counts as on time. */
     private const SUBMIT_GRACE_SECONDS = 30;
 
+    /** Exam cards loaded per page on the exam list (more load as the student scrolls). */
+    private const QUIZZES_PER_PAGE = 12;
+
     /**
      * Exam list with the student's latest result for each quiz.
      */
@@ -25,41 +28,71 @@ class UserAnswerController extends Controller {
         $userId      = auth()->id();
         $maxAttempts = Setting::maxAttempts();
         $difficulty  = Difficulty::tryFrom( (string) $request->query( 'difficulty' ) );
-        $categoryId  = $request->filled( 'category' )
-            ? Category::active()->where( 'slug', $request->query( 'category' ) )->value( 'id' )
+        $allowedIds  = $request->user()->examCategoryIds(); // Only the subjects the student chose
+
+        // Two-level filter: main subjects on top, a group's sub-categories below it
+        $filterCategories = Category::active()->whereIn( 'id', $allowedIds )->orderBy( 'name' )->get( ['id', 'name', 'slug', 'parent_id'] );
+        $selected         = $filterCategories->firstWhere( 'slug', $request->query( 'category' ) );
+        $activeGroup      = $selected && $filterCategories->contains( 'id', $selected->parent_id )
+            ? $filterCategories->firstWhere( 'id', $selected->parent_id )
+            : $selected;
+
+        // Selecting a group shows the quizzes of all its sub-categories
+        $categoryIds = $selected
+            ? $filterCategories->where( 'parent_id', $selected->id )->pluck( 'id' )->push( $selected->id )->all()
             : null;
 
         $quizzes = Quiz::query()
             ->availableToStudents()
+            ->whereIn( 'category_id', $allowedIds )
             ->with( 'category:id,name' )
             ->withCount( 'questions' )
-            ->when( $categoryId, fn( $query ) => $query->where( 'category_id', $categoryId ) )
+            ->when( $categoryIds, fn( $query ) => $query->whereIn( 'category_id', $categoryIds ) )
             ->when( $difficulty, fn( $query ) => $query->where( 'difficulty', $difficulty ) )
             ->latest()
-            ->get();
+            ->latest( 'id' ) // Tie-breaker: many quizzes share a created_at, which made pages overlap
+            ->paginate( self::QUIZZES_PER_PAGE )
+            ->withQueryString();
+
+        $latestAttempts = QuizAttempt::latestSummary( $userId );
+
+        $quizResults = $quizzes->getCollection()->mapWithKeys( fn( Quiz $quiz ) => [
+            $quiz->id => $quiz->resultFor( $latestAttempts->get( $quiz->id ), $maxAttempts ),
+        ] );
+
+        // "Load more" / infinite scroll: only the next page of cards
+        if ( $request->wantsJson() ) {
+            return response()->json( [
+                'html'  => view( 'user.quiz._cards', compact( 'quizzes', 'quizResults' ) )->render(),
+                'next'  => $quizzes->nextPageUrl(),
+                'shown' => $quizzes->lastItem(),
+            ] );
+        }
 
         // Number of exams per level (within the selected category) for the level tiles
         $levelCounts = Quiz::query()
             ->availableToStudents()
-            ->when( $categoryId, fn( $query ) => $query->where( 'category_id', $categoryId ) )
+            ->whereIn( 'category_id', $allowedIds )
+            ->when( $categoryIds, fn( $query ) => $query->whereIn( 'category_id', $categoryIds ) )
             ->selectRaw( 'difficulty, COUNT(*) as total' )
             ->groupBy( 'difficulty' )
             ->toBase()
             ->pluck( 'total', 'difficulty' );
 
-        $latestAttempts = QuizAttempt::latestSummary( $userId );
-
-        $quizResults = $quizzes->mapWithKeys( fn( Quiz $quiz ) => [
-            $quiz->id => $quiz->resultFor( $latestAttempts->get( $quiz->id ), $maxAttempts ),
-        ] );
-
         return view( 'user.quiz.index', [
-            'quizzes'     => $quizzes,
-            'quizResults' => $quizResults,
-            'totalMarks'  => $latestAttempts->sum( 'correct' ),
-            'categories'  => Category::active()->get( ['id', 'name', 'slug'] ),
-            'difficulty'  => $difficulty,
-            'levelCounts' => $levelCounts,
+            'quizzes'        => $quizzes,
+            'quizResults'    => $quizResults,
+            'totalMarks'     => $latestAttempts->sum( 'correct' ),
+            // Top row: subjects whose group is not chosen as a whole (GK, Islamic, Programming, or a single PHP)
+            'mainFilters'    => $filterCategories->reject( fn( Category $category ) => $filterCategories->contains( 'id', $category->parent_id ) ),
+            // Second row: sub-categories of the selected group
+            'subFilters'     => $activeGroup ? $filterCategories->where( 'parent_id', $activeGroup->id ) : collect(),
+            'activeGroup'    => $activeGroup,
+            'selected'       => $selected,
+            // Subjects the student has not chosen, shown locked with a one-click add
+            'lockedSubjects' => Category::subjectsWithExams()->reject( fn( Category $subject ) => in_array( $subject->id, $allowedIds, true ) ),
+            'difficulty'     => $difficulty,
+            'levelCounts'    => $levelCounts,
         ] );
     }
 
@@ -262,6 +295,10 @@ class UserAnswerController extends Controller {
     private function unavailableReason( Quiz $quiz ): ?array {
         if ( !$quiz->isAvailableToStudents() ) {
             return ['error', 'এই পরীক্ষাটি এখন উপলব্ধ নয়।'];
+        }
+
+        if ( !auth()->user()->canTakeExamsIn( $quiz->category_id ) ) {
+            return ['warning', "“{$quiz->category->name}” আপনার বেছে নেওয়া বিষয়ের মধ্যে নেই। নিচের ‘অন্য বিষয়’ থেকে যোগ করে নিন।"];
         }
 
         if ( $quiz->end_exam_at && now()->gt( $quiz->end_exam_at ) ) {

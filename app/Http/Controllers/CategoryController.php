@@ -4,15 +4,32 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkCategoryStatusRequest;
 use App\Http\Requests\BulkDestroyCategoryRequest;
+use App\Http\Requests\CategoryRequest;
 use App\Models\Category;
-use Illuminate\Http\Request;
+use App\Models\Quiz;
 
 class CategoryController extends Controller {
     /**
      * Display a listing of the resource.
      */
     public function index() {
-        $categories = Category::withCount( 'quizzes' )->paginate( 15 );
+        // Each group first, followed by its sub-categories
+        $categories = Category::query()
+            ->with( 'parent:id,name' )
+            ->withCount( ['quizzes', 'children', 'students'] )
+            // Own quizzes plus those of the sub-categories, so a group like Programming shows its real total
+            ->addSelect( ['total_quizzes_count' => Quiz::query()
+                    ->selectRaw( 'COUNT(*)' )
+                    ->where( fn( $query ) => $query
+                            ->whereColumn( 'quizzes.category_id', 'categories.id' )
+                            ->orWhereIn( 'quizzes.category_id', Category::query()
+                                    ->from( 'categories as sub' )
+                                    ->select( 'sub.id' )
+                                    ->whereColumn( 'sub.parent_id', 'categories.id' ) ) ),
+            ] )
+            ->orderByRaw( 'COALESCE(parent_id, id), parent_id IS NOT NULL, name' )
+            ->paginate( 15 );
+
         return view( 'admin.category.index', compact( 'categories' ) );
     }
 
@@ -64,39 +81,30 @@ class CategoryController extends Controller {
         return $redirect;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create() {
-        //
+        return view( 'admin.category.create', ['groups' => $this->groupOptions()] );
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store( Request $request ) {
-        //
+    public function store( CategoryRequest $request ) {
+        $category = Category::create( $request->validated() );
+
+        return redirect()->route( 'category.index' )->with( 'success', "“{$category->name}” created." );
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show( string $id ) {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit( string $id ) {
-        //
+        $category = Category::withCount( 'children' )->findOrFail( $id );
+
+        return view( 'admin.category.edit', [
+            'category' => $category,
+            'groups'   => $this->groupOptions( except: $category->id ),
+        ] );
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update( Request $request, string $id ) {
-        //
+    public function update( CategoryRequest $request, string $id ) {
+        $category = Category::findOrFail( $id );
+        $category->update( $request->validated() );
+
+        return redirect()->route( 'category.index' )->with( 'success', "“{$category->name}” updated." );
     }
 
     /**
@@ -104,6 +112,10 @@ class CategoryController extends Controller {
      */
     public function destroy( string $id ) {
         $category = Category::withCount( 'quizzes' )->findOrFail( $id );
+
+        if ( $category->children()->exists() ) {
+            return back()->with( 'warning', "\"{$category->name}\" is a group with sub-categories. Move them to another group first." );
+        }
 
         // Deleting would cascade to the quizzes and every student's results
         if ( $category->quizzes_count > 0 ) {
@@ -113,5 +125,15 @@ class CategoryController extends Controller {
         $category->delete();
 
         return back()->with( 'success', "\"{$category->name}\" deleted." );
+    }
+
+    /**
+     * Top-level categories that can hold sub-categories.
+     */
+    private function groupOptions( ?int $except = null ) {
+        return Category::topLevel()
+            ->when( $except, fn( $query ) => $query->whereKeyNot( $except ) )
+            ->orderBy( 'name' )
+            ->get( ['id', 'name'] );
     }
 }

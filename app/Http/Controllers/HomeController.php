@@ -56,6 +56,7 @@ class HomeController extends Controller {
         $recentQuizzes = Quiz::with( 'category:id,name' )
             ->withCount( 'questions' )
             ->latest()
+            ->latest( 'id' ) // Tie-breaker: many quizzes share a created_at, which made pages overlap
             ->take( 5 )
             ->get();
 
@@ -77,7 +78,9 @@ class HomeController extends Controller {
      * @return \Illuminate\Contracts\Support\Renderable
      */
     public function userProfile() {
-        return view( 'user.profile' );
+        return view( 'user.profile', [
+            'interests' => auth()->user()->interests()->with( 'children:id,parent_id,name' )->orderBy( 'name' )->get( ['categories.id', 'categories.name'] ),
+        ] );
     }
 
     public function updateProfile( Request $request ) {
