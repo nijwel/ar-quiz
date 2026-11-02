@@ -16,6 +16,11 @@ use Illuminate\Support\Str;
  *   { "easy": [ ["Question?", ["correct", "wrong", "wrong", "wrong"]], ... ], "standard": [...], ... }
  * The first option is always the correct one; options are shuffled when seeding.
  *
+ * An optional "meta" block lets a bank create its own category and use localized titles:
+ *   "meta": { "category": "Islamic", "title": "ইসলামিক কুইজ — {level} পরীক্ষা {number}",
+ *             "description": "{level} স্তরের ... {count}টি প্রশ্ন", "bangla_numbers": true }
+ * {level} becomes the Bangla level name when bangla_numbers is true, otherwise the English one.
+ *
  * Each exam draws QUESTIONS_PER_EXAM questions from its level's bank, so exams of the
  * same level overlap but are never identical. Existing exams (same title) are skipped,
  * so the seeder is safe to run again.
@@ -30,15 +35,19 @@ class DemoQuizSeeder extends Seeder {
         $categories = Category::all()->keyBy( 'slug' );
 
         foreach ( glob( database_path( 'seeders/data/questions/*.json' ) ) as $file ) {
-            $slug     = basename( $file, '.json' );
-            $category = $categories->get( $slug );
+            $slug = basename( $file, '.json' );
+            $bank = json_decode( file_get_contents( $file ), true, flags: JSON_THROW_ON_ERROR );
+            $meta = $bank['meta'] ?? [];
+
+            $category = $categories->get( $slug )
+                ?? ( isset( $meta['category'] )
+                    ? Category::create( ['name' => $meta['category'], 'slug' => $slug, 'status' => true] )
+                    : null );
 
             if ( !$category ) {
                 $this->command?->warn( "Skipping {$slug}.json: no category with slug '{$slug}'." );
                 continue;
             }
-
-            $bank = json_decode( file_get_contents( $file ), true, flags: JSON_THROW_ON_ERROR );
 
             foreach ( Difficulty::cases() as $level ) {
                 $questions = $bank[$level->value] ?? [];
@@ -49,7 +58,7 @@ class DemoQuizSeeder extends Seeder {
                 }
 
                 for ( $number = 1; $number <= self::EXAMS_PER_LEVEL; $number++ ) {
-                    $this->createExam( $category, $level, $number, $questions );
+                    $this->createExam( $category, $level, $number, $questions, $meta );
                 }
             }
 
@@ -57,8 +66,21 @@ class DemoQuizSeeder extends Seeder {
         }
     }
 
-    private function createExam( Category $category, Difficulty $level, int $number, array $bank ): void {
-        $title = "{$category->name} {$level->label()} Exam {$number}";
+    private function createExam( Category $category, Difficulty $level, int $number, array $bank, array $meta ): void {
+        $bangla       = (bool) ( $meta['bangla_numbers'] ?? false );
+        $placeholders = [
+            '{level}'  => $bangla ? $level->banglaLabel() : $level->label(),
+            '{number}' => $bangla ? $this->banglaDigits( $number ) : (string) $number,
+            '{count}'  => $bangla ? $this->banglaDigits( self::QUESTIONS_PER_EXAM ) : (string) self::QUESTIONS_PER_EXAM,
+        ];
+
+        $title = isset( $meta['title'] )
+            ? strtr( $meta['title'], $placeholders )
+            : "{$category->name} {$level->label()} Exam {$number}";
+
+        $description = isset( $meta['description'] )
+            ? strtr( $meta['description'], $placeholders )
+            : "{$level->label()} level {$category->name} exam with " . self::QUESTIONS_PER_EXAM . ' questions.';
 
         if ( Quiz::where( 'title', $title )->exists() ) {
             return;
@@ -69,12 +91,13 @@ class DemoQuizSeeder extends Seeder {
         $picked = $this->shuffled( $bank );
         $picked = array_slice( $picked, 0, self::QUESTIONS_PER_EXAM );
 
-        DB::transaction( function () use ( $category, $level, $title, $picked ) {
+        DB::transaction( function () use ( $category, $level, $number, $title, $description, $picked ) {
             $quiz = Quiz::create( [
                 'category_id' => $category->id,
                 'title'       => $title,
-                'slug'        => Str::slug( $title ),
-                'description' => "{$level->label()} level {$category->name} exam with " . count( $picked ) . ' questions.',
+                // Built from ASCII parts so localized (e.g. Bangla) titles still get a readable slug
+                'slug'        => Str::slug( "{$category->slug} {$level->value} exam {$number}" ),
+                'description' => $description,
                 'difficulty'  => $level,
             ] );
 
@@ -106,6 +129,10 @@ class DemoQuizSeeder extends Seeder {
 
             DB::table( 'answers' )->insert( $answers );
         } );
+    }
+
+    private function banglaDigits( int $number ): string {
+        return strtr( (string) $number, ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'] );
     }
 
     /**
