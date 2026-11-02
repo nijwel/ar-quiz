@@ -11,6 +11,17 @@
         </x-slot:actions>
     </x-page-hero>
 
+    <div class="mb-8 flex flex-wrap items-center gap-2">
+        <span class="mr-1 flex items-center gap-1 text-xs font-bold tracking-wider text-ink-400 uppercase">
+            <span class="icon-[tabler--tags] size-4"></span> Subjects
+        </span>
+        @forelse ($participant->interests as $interest)
+            <span class="badge bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/25">{{ $interest->name }}</span>
+        @empty
+            <span class="text-sm text-ink-500">এখনো কোনো বিষয় বেছে নেয়নি</span>
+        @endforelse
+    </div>
+
     <h2 class="mb-4 flex items-center gap-2 font-display text-xl font-bold text-white">
         <span class="icon-[tabler--report-analytics] size-6 text-brand-400"></span> Exam History & Performance
     </h2>

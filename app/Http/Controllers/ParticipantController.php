@@ -62,7 +62,7 @@ class ParticipantController extends Controller {
      * Display the specified resource.
      */
     public function show( string $id ) {
-        $participant = User::findOrFail( $id );
+        $participant = User::with( 'interests:id,name' )->findOrFail( $id );
 
         // Latest submitted attempt of every quiz this student took
         $latestAttempts = QuizAttempt::latestSummary( $participant->id );

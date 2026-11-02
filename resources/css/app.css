@@ -186,6 +186,14 @@
         color: var(--color-white);
     }
 
+    /* Group headings in dropdowns (e.g. Programming) must match the theme too */
+    optgroup {
+        background: var(--color-ink-950);
+        color: var(--color-brand-400);
+        font-style: normal;
+        font-weight: 700;
+    }
+
     [x-cloak] {
         display: none !important;
     }

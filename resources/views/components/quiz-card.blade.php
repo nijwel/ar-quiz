@@ -23,7 +23,8 @@
     $percent = $result['total_questions'] ? round(($result['right'] / $result['total_questions']) * 100) : 0;
 @endphp
 
-<article class="card group flex animate-rise flex-col p-5 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-brand-900/5"
+{{-- Card layout (grid view) --}}
+<article class="card group flex animate-rise flex-col p-5 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-brand-900/5 group-data-[view=list]/quizzes:hidden"
     style="animation-delay: {{ $delay }}ms">
     <div class="mb-4 flex items-center justify-between gap-2">
         <span class="badge bg-white/10 text-ink-300">
@@ -93,6 +94,55 @@
         @else
             <a href="{{ route('user.quiz.show', $quiz->slug) }}" class="btn btn-primary w-full">
                 Take Quiz <span class="icon-[tabler--arrow-right] size-4 transition group-hover:translate-x-1"></span>
+            </a>
+        @endif
+    </div>
+</article>
+
+{{-- Row layout (list view) --}}
+<article class="card group hidden animate-rise items-center gap-4 p-3 pr-4 transition hover:ring-brand-500/30 sm:p-4 group-data-[view=list]/quizzes:flex"
+    style="animation-delay: {{ $delay }}ms">
+    <span class="grid size-11 shrink-0 place-items-center rounded-xl {{ $quiz->difficulty->badgeClass() }}" title="{{ $quiz->difficulty->label() }}">
+        <span class="{{ $quiz->difficulty->icon() }} size-5"></span>
+    </span>
+
+    <div class="min-w-0 flex-1">
+        <h3 class="truncate font-semibold text-white transition group-hover:text-brand-300">{{ $quiz->title }}</h3>
+        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-400">
+            <span class="flex items-center gap-1"><span class="icon-[tabler--folder] size-3.5"></span> {{ $quiz->category?->name ?? 'General' }}</span>
+            <span>{{ $quiz->difficulty->label() }}</span>
+            <span class="flex items-center gap-1"><span class="icon-[tabler--list-numbers] size-3.5"></span> {{ $result['total_questions'] }}</span>
+            <span class="flex items-center gap-1"><span class="icon-[tabler--hourglass] size-3.5"></span> {{ $minutes }}m{{ $seconds ? " {$seconds}s" : '' }}</span>
+            @if ($result['attempted'])
+                <span class="flex items-center gap-1 font-semibold text-emerald-400">
+                    <span class="icon-[tabler--check] size-3.5"></span> {{ $result['right'] }}/{{ $result['total_questions'] }} · {{ $percent }}%
+                </span>
+            @endif
+            @if ($result['taken_at'])
+                <span class="hidden items-center gap-1 sm:flex" title="{{ $result['taken_at']->format('d M Y, h:i A') }}">
+                    <span class="icon-[tabler--calendar-check] size-3.5"></span> {{ $result['taken_at']->format('d M, h:i A') }}
+                </span>
+            @elseif ($start)
+                <span class="hidden items-center gap-1 sm:flex"><span class="icon-[tabler--calendar-event] size-3.5"></span> {{ $start->format('d M, h:i A') }}</span>
+            @endif
+        </div>
+    </div>
+
+    <span class="badge hidden shrink-0 md:inline-flex {{ $status[1] }}"><span class="{{ $status[2] }} size-3.5"></span> {{ $status[0] }}</span>
+
+    <div class="flex shrink-0 gap-2">
+        @if ($result['attempted'])
+            <a href="{{ route('user.quiz.result', $quiz->slug) }}" class="btn btn-dark btn-sm" title="Result">
+                <span class="icon-[tabler--report-analytics] size-4"></span><span class="hidden sm:inline">Result</span>
+            </a>
+            @if ($canRetake)
+                <a href="{{ route('user.quiz.show', $quiz->slug) }}" class="btn btn-primary btn-sm" title="Retake">
+                    <span class="icon-[tabler--reload] size-4"></span><span class="hidden sm:inline">Retake</span>
+                </a>
+            @endif
+        @else
+            <a href="{{ route('user.quiz.show', $quiz->slug) }}" class="btn btn-primary btn-sm">
+                <span class="hidden sm:inline">Take Quiz</span> <span class="icon-[tabler--arrow-right] size-4"></span>
             </a>
         @endif
     </div>

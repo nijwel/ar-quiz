@@ -16,6 +16,7 @@ class Setting extends Model {
         'seconds_per_question' => 45,
         'max_attempts'         => 1,
         'show_answer_review'   => 1,
+        'max_interests'        => 10,
     ];
 
     private const CACHE_KEY = 'app_settings';
@@ -42,6 +43,11 @@ class Setting extends Model {
 
     public static function maxAttempts(): int {
         return max( 1, (int) self::get( 'max_attempts' ) );
+    }
+
+    /** How many subjects a student may choose. */
+    public static function maxInterests(): int {
+        return max( 1, (int) self::get( 'max_interests' ) );
     }
 
     /** Whether students may see the correct answers after submitting. */

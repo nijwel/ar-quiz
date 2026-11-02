@@ -70,7 +70,7 @@
     </form>
 
     <form action="{{ route('admin.settings.update') }}" method="POST"
-        x-data="{ seconds: {{ old('seconds_per_question', $secondsPerQuestion) }}, attempts: {{ old('max_attempts', $maxAttempts) }}, review: {{ old('show_answer_review', $showAnswerReview) ? 'true' : 'false' }} }"
+        x-data="{ seconds: {{ old('seconds_per_question', $secondsPerQuestion) }}, attempts: {{ old('max_attempts', $maxAttempts) }}, review: {{ old('show_answer_review', $showAnswerReview) ? 'true' : 'false' }}, interests: {{ old('max_interests', $maxInterests) }} }"
         class="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
         @csrf
         @method('PUT')
@@ -148,6 +148,28 @@
                         x-text="attempts === 1 ? 'প্রতিটি পরীক্ষা মাত্র একবার দেওয়া যাবে।' : `প্রতিটি পরীক্ষা সর্বোচ্চ ${attempts} বার দেওয়া যাবে।`"></p>
                     <p class="mt-2 text-xs text-ink-500">স্কোর ও লিডারবোর্ডে প্রতিটি পরীক্ষার সর্বশেষ চেষ্টাটি গণনা করা হবে।</p>
                 </div>
+            </div>
+        </div>
+
+        {{-- Subjects per student --}}
+        <div class="card flex flex-col gap-5 p-6 sm:flex-row sm:items-center md:col-span-2">
+            <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/25">
+                <span class="icon-[tabler--tags] size-6"></span>
+            </span>
+            <div class="flex-1">
+                <h2 class="font-display text-lg font-bold text-white">Subjects per Student</h2>
+                <p class="text-sm text-ink-400">একজন স্টুডেন্ট সর্বোচ্চ কয়টি বিষয় বেছে নিতে পারবে। শুধু বেছে নেওয়া বিষয়েই পরীক্ষা দেওয়া যাবে।</p>
+                <p class="mt-1 text-xs text-ink-500">পুরো একটি গ্রুপ (যেমন Programming) একটি বিষয় হিসেবে গণ্য হয়।</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="interests = Math.max(1, interests - 1)" class="btn btn-ghost btn-icon size-11">
+                    <span class="icon-[tabler--minus] size-5"></span>
+                </button>
+                <input type="number" name="max_interests" min="1" max="50" x-model.number="interests"
+                    class="input w-20 text-center text-lg font-bold @error('max_interests') input-error @enderror" required>
+                <button type="button" @click="interests = Math.min(50, interests + 1)" class="btn btn-ghost btn-icon size-11">
+                    <span class="icon-[tabler--plus] size-5"></span>
+                </button>
             </div>
         </div>
 

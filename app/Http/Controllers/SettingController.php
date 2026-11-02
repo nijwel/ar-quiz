@@ -14,6 +14,7 @@ class SettingController extends Controller {
             'secondsPerQuestion' => Setting::secondsPerQuestion(),
             'maxAttempts'        => Setting::maxAttempts(),
             'showAnswerReview'   => Setting::showAnswerReview(),
+            'maxInterests'       => Setting::maxInterests(),
             'logoUrl'            => Setting::logoUrl(),
             'faviconUrl'         => Setting::faviconUrl(),
         ] );

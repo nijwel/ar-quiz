@@ -81,6 +81,30 @@ class User extends Authenticatable {
         return $this->hasMany( UserAnswer::class );
     }
 
+    /** Subjects the student chose to take exams in (groups or single categories). */
+    public function interests() {
+        return $this->belongsToMany( Category::class )->withTimestamps();
+    }
+
+    /** Memoized result of examCategoryIds() for this request. */
+    private ?array $examCategoryIds = null;
+
+    /**
+     * Ids of every category the student may take exams in: the chosen subjects plus all
+     * sub-categories of any chosen group (choosing "Programming" covers PHP, Laravel, ...).
+     */
+    public function examCategoryIds(): array {
+        return $this->examCategoryIds ??= Category::query()
+            ->whereIn( 'id', $this->interests()->select( 'categories.id' ) )
+            ->orWhereIn( 'parent_id', $this->interests()->select( 'categories.id' ) )
+            ->pluck( 'id' )
+            ->all();
+    }
+
+    public function canTakeExamsIn( int $categoryId ): bool {
+        return in_array( $categoryId, $this->examCategoryIds(), true );
+    }
+
     public function quizAttempts() {
         return $this->hasMany( QuizAttempt::class );
     }

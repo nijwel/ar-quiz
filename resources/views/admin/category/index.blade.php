@@ -3,7 +3,13 @@
 @section('title', 'Categories')
 
 @section('content')
-    <x-page-hero icon="icon-[tabler--category]" title="Categories" subtitle="কুইজের সকল ক্যাটেগরি এক জায়গায়।" />
+    <x-page-hero icon="icon-[tabler--category]" title="Categories" subtitle="কুইজের সকল ক্যাটেগরি এক জায়গায়। গ্রুপের নিচে তার সাব-ক্যাটেগরি দেখানো হয়েছে।">
+        <x-slot:actions>
+            <a href="{{ route('category.create') }}" class="btn btn-volt">
+                <span class="icon-[tabler--plus] size-4"></span> New Category
+            </a>
+        </x-slot:actions>
+    </x-page-hero>
 
     <div class="card overflow-hidden" x-data="categoryBulk(@js($categories->pluck('quizzes_count', 'id')))">
         {{-- Bulk action bar; the row checkboxes belong to this form via form="bulkForm" --}}
@@ -55,15 +61,36 @@
                             </td>
                             <td class="font-semibold text-ink-400">{{ $categories->firstItem() + $key }}</td>
                             <td>
-                                <div class="flex items-center gap-3">
-                                    <span class="grid size-9 place-items-center rounded-xl bg-fuchsia-500/10 font-display text-sm font-bold text-fuchsia-400">
+                                <div class="flex items-center gap-3 {{ $category->parent_id ? 'pl-6' : '' }}">
+                                    @if ($category->parent_id)
+                                        <span class="icon-[tabler--corner-down-right] -ml-5 size-4 text-ink-500"></span>
+                                    @endif
+                                    <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-fuchsia-500/10 font-display text-sm font-bold text-fuchsia-400">
                                         {{ strtoupper(mb_substr($category->name, 0, 1)) }}
                                     </span>
-                                    <span class="font-semibold text-white">{{ $category->name }}</span>
+                                    <div class="min-w-0">
+                                        <p class="flex items-center gap-2 font-semibold text-white">
+                                            {{ $category->name }}
+                                            @if ($category->children_count)
+                                                <span class="badge bg-brand-500/10 px-2 py-0.5 text-[10px] text-brand-300">Group · {{ $category->children_count }}</span>
+                                            @endif
+                                        </p>
+                                        <p class="text-xs text-ink-500">
+                                            @if ($category->parent)
+                                                {{ $category->parent->name }} ·
+                                            @endif
+                                            {{ $category->students_count }} জন স্টুডেন্ট বেছে নিয়েছে
+                                        </p>
+                                    </div>
                                 </div>
                             </td>
                             <td><code class="rounded-lg bg-white/5 px-2 py-1 text-xs text-ink-300">{{ $category->slug }}</code></td>
-                            <td class="text-center font-semibold text-ink-300">{{ $category->quizzes_count }}</td>
+                            <td class="text-center">
+                                <span class="font-semibold text-ink-300">{{ $category->total_quizzes_count }}</span>
+                                @if ($category->children_count)
+                                    <span class="block text-[10px] text-ink-500">{{ $category->children_count }}টি সাব-ক্যাটেগরি মিলে</span>
+                                @endif
+                            </td>
                             <td class="text-center">
                                 <form action="{{ route('category.status', $category) }}" method="POST" class="inline">
                                     @csrf

@@ -51,8 +51,18 @@
                     <div class="sm:col-span-2">
                         <label class="label" for="category_id">Category</label>
                         <select id="category_id" name="category_id" class="input" required>
+                            @php $chosenCategory = old('category_id', $quiz?->category_id); @endphp
                             @foreach ($categories as $category)
-                                <option value="{{ $category->id }}" @selected(old('category_id', $quiz?->category_id) == $category->id)>{{ $category->name }}{{ $category->status ? '' : ' (inactive)' }}</option>
+                                @if ($category->children->isNotEmpty())
+                                    {{-- A group is only a heading; its sub-categories are the choices --}}
+                                    <optgroup label="{{ $category->name }}{{ $category->status ? '' : ' (inactive)' }}">
+                                        @foreach ($category->children as $child)
+                                            <option value="{{ $child->id }}" @selected($chosenCategory == $child->id)>{{ $child->name }}{{ $child->status ? '' : ' (inactive)' }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @else
+                                    <option value="{{ $category->id }}" @selected($chosenCategory == $category->id)>{{ $category->name }}{{ $category->status ? '' : ' (inactive)' }}</option>
+                                @endif
                             @endforeach
                         </select>
                     </div>

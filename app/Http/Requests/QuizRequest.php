@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Difficulty;
+use App\Models\Category;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,12 @@ class QuizRequest extends FormRequest {
         return [
             'title'               => ['required', 'string', 'max:255', Rule::unique( 'quizzes', 'title' )->ignore( $quizId )],
             'description'         => ['nullable', 'string'],
-            'category_id'         => ['required', 'exists:categories,id'],
+            'category_id'         => ['required', 'exists:categories,id', function ( $attribute, $value, $fail ) {
+                // A group such as Programming only holds sub-categories, not quizzes
+                if ( Category::where( 'parent_id', $value )->exists() ) {
+                    $fail( 'Choose a sub-category (e.g. PHP), not a group.' );
+                }
+            }],
             'difficulty'          => ['required', Rule::enum( Difficulty::class )],
             'duration_minutes'    => ['nullable', 'integer', 'min:1', 'max:1440'],
             'start_exam_at'       => ['nullable', 'date'],
