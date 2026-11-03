@@ -3,7 +3,8 @@
         "category": "Islamic",
         "title": "ইসলামিক কুইজ — {level} পরীক্ষা {number}",
         "description": "{level} স্তরের ইসলামিক জ্ঞানের পরীক্ষা: কুরআন, হাদিস, নবী-রাসুল, ইবাদত ও ইসলামের ইতিহাস। মোট {count}টি প্রশ্ন।",
-        "bangla_numbers": true
+        "bangla_numbers": true,
+        "unique": true
     },
     "easy": [
         ["ইসলামের মূল স্তম্ভ কয়টি?", ["৫টি", "৩টি", "৪টি", "৬টি"]],
