@@ -31,7 +31,8 @@ class QuizRequest extends FormRequest {
             'difficulty'          => ['required', Rule::enum( Difficulty::class )],
             'duration_minutes'    => ['nullable', 'integer', 'min:1', 'max:1440'],
             'start_exam_at'       => ['nullable', 'date'],
-            'end_exam_at'         => ['nullable', 'date', 'after:start_exam_at'],
+            // Without a start the quiz is open right away, so the end only has to follow a start that was given
+            'end_exam_at'         => ['nullable', 'date', Rule::when( $this->filled( 'start_exam_at' ), 'after:start_exam_at' )],
             'questions'           => ['required', 'array', 'min:1'],
             'questions.*.text'    => ['required', 'string'],
             'questions.*.answers' => ['required', 'array', 'min:2'],
