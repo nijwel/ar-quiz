@@ -14,7 +14,7 @@
     <div class="card overflow-hidden" x-data="categoryBulk(@js($categories->pluck('quizzes_count', 'id')))">
         {{-- Bulk action bar; the row checkboxes belong to this form via form="bulkForm" --}}
         <form id="bulkForm" action="{{ route('category.bulk-status') }}" method="POST"
-            x-show="selected.length" x-cloak x-transition @submit="confirmBulk($event)"
+            x-show="selected.length" x-cloak x-transition @submit="setMethod($event)"
             class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-brand-500/5 px-6 py-3">
             @csrf
             <input type="hidden" name="_method" value="PATCH" x-ref="method">
@@ -23,10 +23,10 @@
                 <button type="submit" name="status" value="1" class="btn btn-sm bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/20">
                     <span class="icon-[tabler--eye] size-3.5"></span> Activate
                 </button>
-                <button type="submit" name="status" value="0" class="btn btn-sm bg-white/5 text-ink-300 ring-1 ring-white/15 hover:bg-white/10">
+                <button type="submit" name="status" value="0" :data-confirm="hideMessage()" class="btn btn-sm bg-white/5 text-ink-300 ring-1 ring-white/15 hover:bg-white/10">
                     <span class="icon-[tabler--eye-off] size-3.5"></span> Deactivate
                 </button>
-                <button type="submit" data-action="delete" formaction="{{ route('category.bulk-destroy') }}"
+                <button type="submit" data-action="delete" :data-confirm="deleteMessage()" data-confirm-tone="danger" formaction="{{ route('category.bulk-destroy') }}"
                     class="btn btn-sm bg-rose-500/10 text-rose-300 ring-1 ring-rose-500/30 hover:bg-rose-500/20">
                     <span class="icon-[tabler--trash] size-3.5"></span> Delete
                 </button>
@@ -98,7 +98,7 @@
                                     <button type="submit"
                                         title="{{ $category->status ? 'Click to deactivate' : 'Click to activate' }}"
                                         @if ($category->status && $category->quizzes_count)
-                                            onclick="return confirm('এই ক্যাটেগরির {{ $category->quizzes_count }}টি পরীক্ষা শিক্ষার্থীদের কাছে আর দেখা যাবে না। নিশ্চিত?')"
+                                            data-confirm="এই ক্যাটেগরির {{ $category->quizzes_count }}টি পরীক্ষা শিক্ষার্থীদের কাছে আর দেখা যাবে না।"
                                         @endif
                                         class="badge cursor-pointer transition hover:ring-1 {{ $category->status ? 'bg-emerald-500/10 text-emerald-300 hover:ring-emerald-500/40' : 'bg-white/10 text-ink-400 hover:ring-white/30' }}">
                                         <span class="size-1.5 rounded-full {{ $category->status ? 'bg-emerald-500' : 'bg-ink-400' }}"></span>
@@ -119,7 +119,7 @@
                                         </span>
                                     @else
                                         <form action="{{ route('category.destroy', $category->id) }}" method="POST"
-                                            onsubmit="return confirm('“{{ $category->name }}” ক্যাটেগরিটি মুছে ফেলা হবে। নিশ্চিত?')">
+                                            data-confirm="“{{ $category->name }}” ক্যাটেগরিটি মুছে ফেলা হবে।" data-confirm-tone="danger">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-ghost btn-icon text-rose-400 hover:text-rose-300" title="Delete category">
@@ -157,28 +157,23 @@
                 selected: [],
                 pageIds: Object.keys(quizCounts).map(Number),
 
-                confirmBulk(event) {
-                    const button = event.submitter;
-                    const withQuizzes = this.selected.filter((id) => quizCounts[id] > 0).length;
-                    let message = null;
+                withQuizzes() {
+                    return this.selected.filter((id) => quizCounts[id] > 0).length;
+                },
 
-                    if (button?.dataset.action === 'delete') {
-                        message = `${this.selected.length}টি ক্যাটেগরি মুছে ফেলা হবে।`;
-                        if (withQuizzes) {
-                            message += `
-${withQuizzes}টিতে পরীক্ষা আছে, সেগুলো মুছবে না।`;
-                        }
-                    } else if (button?.value === '0' && withQuizzes) {
-                        message = 'নির্বাচিত ক্যাটেগরিগুলোর পরীক্ষা শিক্ষার্থীদের কাছে আর দেখা যাবে না।';
-                    }
+                // Bound to the buttons' data-confirm; null means no confirmation needed
+                deleteMessage() {
+                    const skipped = this.withQuizzes();
+                    return `${this.selected.length}টি ক্যাটেগরি মুছে ফেলা হবে।` +
+                        (skipped ? `\n${skipped}টিতে পরীক্ষা আছে, সেগুলো মুছবে না।` : '');
+                },
 
-                    if (message && !confirm(message + '
-নিশ্চিত?')) {
-                        event.preventDefault();
-                        return;
-                    }
+                hideMessage() {
+                    return this.withQuizzes() ? 'নির্বাচিত ক্যাটেগরিগুলোর পরীক্ষা শিক্ষার্থীদের কাছে আর দেখা যাবে না।' : null;
+                },
 
-                    this.$refs.method.value = button?.dataset.action === 'delete' ? 'DELETE' : 'PATCH';
+                setMethod(event) {
+                    this.$refs.method.value = event.submitter?.dataset.action === 'delete' ? 'DELETE' : 'PATCH';
                 },
             }));
         });

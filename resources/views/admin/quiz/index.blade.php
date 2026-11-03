@@ -72,11 +72,11 @@
                         <span class="icon-[tabler--eye] size-4"></span> Show to students
                     </button>
                     <button type="submit" name="status" value="0" class="btn btn-sm bg-white/10 text-ink-300 ring-1 ring-white/15 hover:bg-white/15"
-                        onclick="return confirm('সিলেক্ট করা কুইজগুলো শিক্ষার্থীদের কাছে আর দেখা যাবে না। নিশ্চিত?')">
+                        data-confirm="সিলেক্ট করা কুইজগুলো শিক্ষার্থীদের কাছে আর দেখা যাবে না।">
                         <span class="icon-[tabler--eye-off] size-4"></span> Hide from students
                     </button>
                     <button type="submit" formaction="{{ route('quiz.destroy.bulk') }}" class="btn btn-danger btn-sm"
-                        @click="confirm(selected.length + ' টি কুইজ, এর প্রশ্ন ও শিক্ষার্থীদের সব ফলাফল স্থায়ীভাবে ডিলিট হবে। নিশ্চিত?') || $event.preventDefault()">
+                        :data-confirm="`${selected.length} টি কুইজ, এর প্রশ্ন ও শিক্ষার্থীদের সব ফলাফল স্থায়ীভাবে ডিলিট হবে।`" data-confirm-tone="danger">
                         <span class="icon-[tabler--trash] size-4"></span> Delete
                     </button>
                 </div>
@@ -188,7 +188,7 @@
                                             <span class="icon-[tabler--pencil] size-4"></span>
                                         </a>
                                         <form action="{{ route('quiz.destroy', $quiz->id) }}" method="POST"
-                                            onsubmit="return confirm('আপনি কি নিশ্চিতভাবে এই কুইজটি ডিলিট করতে চান?')">
+                                            data-confirm="এই কুইজটি, এর প্রশ্ন ও ফলাফল স্থায়ীভাবে ডিলিট হবে।" data-confirm-tone="danger">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-danger btn-icon" title="Delete Quiz">

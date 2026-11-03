@@ -85,15 +85,19 @@
                         @enderror
                     </div>
                     <div>
-                        <label class="label" for="start_exam_at">Start Date & Time</label>
+                        <label class="label" for="start_exam_at">Start Date & Time <span class="font-normal text-ink-400">(optional)</span></label>
                         <input id="start_exam_at" type="datetime-local" name="start_exam_at"
-                            value="{{ old('start_exam_at', $toInput($quiz?->start_exam_at)) }}" class="input" required>
+                            value="{{ old('start_exam_at', $toInput($quiz?->start_exam_at)) }}"
+                            class="input @error('start_exam_at') input-error @enderror">
+                        @error('start_exam_at')
+                            <p class="field-error">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
-                        <label class="label" for="end_exam_at">End Date & Time</label>
+                        <label class="label" for="end_exam_at">End Date & Time <span class="font-normal text-ink-400">(optional)</span></label>
                         <input id="end_exam_at" type="datetime-local" name="end_exam_at"
                             value="{{ old('end_exam_at', $toInput($quiz?->end_exam_at)) }}"
-                            class="input @error('end_exam_at') input-error @enderror" required>
+                            class="input @error('end_exam_at') input-error @enderror">
                         @error('end_exam_at')
                             <p class="field-error">{{ $message }}</p>
                         @enderror
@@ -224,8 +228,10 @@
                     this.questions.push(make());
                     this.$nextTick(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
                 },
-                removeQuestion(index) {
-                    if (confirm('আপনি কি এই প্রশ্নটি মুছে ফেলতে চান?')) this.questions.splice(index, 1);
+                async removeQuestion(index) {
+                    if (await confirmDialog('এই প্রশ্ন ও এর উত্তরগুলো ফর্ম থেকে সরে যাবে।', { tone: 'danger' })) {
+                        this.questions.splice(index, 1);
+                    }
                 },
                 removeAnswer(question, index) {
                     question.answers.splice(index, 1);
